@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Security report
+    url: https://github.com/Dochikhoa2006/SympScan-Advanced-Medical-RAG-Knowledge-Graph-System/blob/main/SECURITY.md
+    about: Review the private reporting instructions for suspected vulnerabilities.
+  - name: Project safety boundary
+    url: https://github.com/Dochikhoa2006/SympScan-Advanced-Medical-RAG-Knowledge-Graph-System/blob/main/docs/SAFETY_AND_LIMITATIONS.md
+    about: This project cannot provide emergency or medical support; contact appropriate local services.

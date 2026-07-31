@@ -1,95 +1,227 @@
-# SympScan: Advanced Medical RAG & Knowledge Graph System
+# SympScan
 
-## Overview
-SympScan is an intelligent medical assistant designed to provide clinical facts, diagnostic insights, and treatment protocols by leveraging a **Hybrid Dual-Indexing RAG** (Retrieval-Augmented Generation) pipeline and a **Knowledge Graph**. The system transitions from a simple retriever to a sophisticated "Medical Knowledge Engine" that synthesizes information from both unstructured document chunks and structured entity relationships.
+**A local-first medical-information RAG prototype combining BM25, FAISS, Neo4j, cross-encoder reranking, and Ollama generation.**
 
-The pipeline integrates:
-1.  **Hybrid Search**: Combining BM25 keyword search with FAISS-based semantic vector embeddings.
-2.  **Knowledge Graph**: A Neo4j-powered graph database to capture explicit relationships between diseases, symptoms, medications, and precautions.
-3.  **Agentic Workflow**: Pre-retrieval query rewriting, expansion, and HyDE (Hypothetical Document Embeddings), followed by post-retrieval extractive compression and reranking.
+[![Syntax and structure](https://github.com/Dochikhoa2006/SympScan-Advanced-Medical-RAG-Knowledge-Graph-System/actions/workflows/repository-quality.yml/badge.svg)](https://github.com/Dochikhoa2006/SympScan-Advanced-Medical-RAG-Knowledge-Graph-System/actions/workflows/repository-quality.yml)
+![Python](https://img.shields.io/badge/Python-3.11-3776AB?logo=python&logoColor=white)
+![Interface](https://img.shields.io/badge/UI-Streamlit-FF4B4B?logo=streamlit&logoColor=white)
+![Status](https://img.shields.io/badge/status-educational%20prototype-orange)
 
-## System Architecture
+SympScan is an end-to-end exploration of hybrid retrieval and graph-enriched generation over a public symptom-to-disease dataset. It joins lexical search, dense vector search, structured one-hop graph context, local language models, and a Streamlit interface in one inspectable pipeline.
 
-| Component | Technology | Purpose |
-| :--- | :--- | :--- |
-| **Orchestration** | LangChain / Ollama | Managing LLM chains and tool integration. |
-| **Vector Database** | FAISS | High-performance semantic similarity search. |
-| **Graph Database** | Neo4j | Retrieving structured medical entities and relationships. |
-| **LLM Interface** | Qwen-2.5 / Llama 3 | Intent detection, entity extraction, and final response synthesis. |
-| **Data Processing** | PySpark | Efficient transformation and Parquet storage of medical datasets. |
+> [!IMPORTANT]
+> SympScan is an educational software prototype. It is not a medical device, has not been clinically validated, and must not be used for diagnosis, emergency triage, prescribing, or as a substitute for a qualified healthcare professional.
 
-[Image of a RAG pipeline architecture including Vector DB and Knowledge Graph]
+## What this project demonstrates
 
-## File Description
+- A PySpark and Pandas preprocessing pipeline that combines six source tables into structured and flattened disease records.
+- Dual retrieval with BM25 for lexical matching and a normalized FAISS HNSW index for semantic similarity.
+- Reciprocal-rank fusion and `ms-marco-MiniLM-L-6-v2` cross-encoder reranking.
+- Neo4j storage for disease, medication, precaution, and source-chunk relationships.
+- LLM-assisted intent detection, standalone query rewriting, entity extraction, structured generation, and JSON repair.
+- Local inference through Ollama, a Streamlit chat interface, and Docker Compose orchestration.
 
-| File Name | Description |
-|---|---|
-| `Raw_Dataset_PreProcess.py` | Uses **PySpark** to clean and transform raw medical CSVs into a structured Parquet dataset. |
-| `Hybrid_Dual_Indexing.py` | Implements semantic chunking and BM25 indexing for dual-path retrieval. |
-| `Knowledge_Graph.py` | Constructs and queries a **Neo4j** graph to map Disease $\rightarrow$ Medication/Precaution relations. |
-| `Vector_Database.py` | Manages the **FAISS** HNSW index for efficient vector storage and retrieval. |
-| `PreRetrival_and_PostRetrieval.py` | Handles query rewriting, HyDE generation, and extractive context compression. |
-| `Retrieval.py` | The main engine that merges Hybrid and Graph results using **RRF** and **Cross-Encoders**. |
-| `Augmented_Generation.py` | The core RAG logic; handles prompt engineering, JSON validation, and chat history summarization. |
-| `Inference.py` | A **Streamlit** dashboard providing a professional UI for real-time medical analysis. |
+The local dataset snapshot contains 100 disease profiles, 96,088 symptom-profile rows, and 230 symptom indicator columns. The built retrieval snapshot contains 12,947 chunks represented by 384-dimensional embeddings.
 
-## Methodology & Analysis
+## Architecture
 
-### 1. Hybrid Retrieval Strategy
-The system utilizes a "Dual-Path" approach. The `Hybrid_Dual_Indexing.py` script ensures that technical medical terms (captured by BM25) and contextual meanings (captured by `all-MiniLM-L6-v2`) are both considered. Results are then reranked using a **Cross-Encoder** (`ms-marco-MiniLM-L-6-v2`) to ensure top-tier relevance.
+```mermaid
+flowchart LR
+    U[User] --> UI[Streamlit UI]
+    UI --> Q[Intent detection and query rewrite]
 
-### 2. Knowledge Graph Synergy
-While the vector database provides descriptive context, the `Knowledge_Graph.py` component provides hard clinical links. For example, if "Hypertension" is detected, the graph immediately pulls associated "Medications" and "Precautions" as verified facts, which are prioritized in the final prompt.
+    Q --> BM25[BM25 retrieval]
+    Q --> FAISS[FAISS HNSW retrieval]
+    BM25 --> BRRF[BM25-path rank fusion]
+    FAISS --> FRRF[FAISS-path rank fusion]
+    BRRF --> CE[Cross-encoder reranking]
+    FRRF --> CE
 
-### 3. Reliability & Validation
-* **Format Guardrails**: The system enforces strict JSON outputs for consistent UI rendering.
-* **Self-Correction**: If the LLM produces an invalid format, the `Generation` loop triggers a rectification prompt.
-* **Evaluation Scores**: Includes internal metrics for **Response Confidence** and **Retrieval Helpfulness**.
+    Q --> EE[Medical entity extraction]
+    EE --> KG[(Neo4j one-hop lookup)]
+    KG --> GR[Graph-context reranking]
 
-## Installation & Setup
+    CE --> AUG[Prompt augmentation]
+    GR --> AUG
+    AUG --> LLM[Qwen 2.5 via Ollama]
+    LLM --> JSON[JSON parsing and repair]
+    JSON --> UI
+```
+
+The graph enriches retrieval with dataset-derived relationships; it is not an external source of clinically verified facts. See [Architecture](docs/ARCHITECTURE.md) for the offline build path, online sequence, graph schema, and default feature flags.
+
+## Technology stack
+
+| Layer | Technology | Role |
+|---|---|---|
+| Data preparation | Pandas, PySpark, Parquet | Normalize and assemble disease records |
+| Sparse retrieval | BM25Okapi, NLTK | Match exact and inflected terminology |
+| Dense retrieval | Sentence Transformers, FAISS HNSW | Retrieve semantically related chunks |
+| Reranking | MS MARCO CrossEncoder | Score query–chunk relevance |
+| Graph context | Neo4j, APOC Core/Extended | Retrieve relationships and restore the graph snapshot |
+| LLM workflow | LangChain, Ollama, Qwen 2.5 | Rewrite, extract, generate, and summarize |
+| Interface | Streamlit | Provide the interactive chat experience |
+| Runtime | Docker, Docker Compose | Run the application and Neo4j services |
+
+## Repository layout
+
+The executable modules intentionally remain at the repository root. Existing imports, relative artifact paths, and serialized search objects depend on these module names and locations.
+
+```text
+.
+├── Inference.py                       # Streamlit entry point
+├── Augmented_Generation.py            # RAG orchestration and response handling
+├── Retrieval.py                       # Hybrid and graph retrieval
+├── PreRetrival_and_PostRetrieval.py   # Query and context processing
+├── Hybrid_Dual_Indexing.py            # BM25 and semantic indexing
+├── Vector_Database.py                 # FAISS persistence and search
+├── Knowledge_Graph.py                 # Neo4j construction and retrieval
+├── Raw_Dataset_PreProcess.py          # CSV-to-Parquet preprocessing
+├── FAISS_Database/                    # FAISS index files
+├── neo4j.cypher                       # Neo4j snapshot managed by Git LFS
+├── Dockerfile
+├── docker-compose.yml
+├── requirements.txt
+├── docs/                              # Architecture, setup, artifacts, and safety
+└── .github/                           # CI and collaboration templates
+```
+
+## Quick start
 
 ### Prerequisites
-* **Database**: Neo4j Desktop or AuraDB instance (configured with APOC).
-* **Local LLM**: [Ollama](https://ollama.com/) installed and running.
-* **Environment**: Python 3.10+
 
-### Set Up
+- Git and [Git LFS](https://git-lfs.com/)
+- Python 3.11
+- Docker Desktop with Docker Compose
+- [Ollama](https://ollama.com/) running on the host
+- The locally generated retrieval artifacts described below
 
-1.  **Clone the Repository**:
-    ```bash
-    cd "Your Directory"
-    git clone https://github.com/Dochikhoa2006/SympScan-Advanced-Medical-RAG-Knowledge-Graph-System.git
-    ```
+### 1. Clone the repository
 
-2.  **Docker**:
-    * Container Instantiation / Orchestration:
-        ```bash
-        docker-compose up --build
-    * Chatbot UI (access 1 suitable URL):
-        ```bash
-        Local URL: http://localhost:8501
-        Network URL: http://xxx.xx.x.x:xxxx
-        External URL: http://yyy.yy.y.y:yyyy
-        ```
+```bash
+git clone https://github.com/Dochikhoa2006/SympScan-Advanced-Medical-RAG-Knowledge-Graph-System.git
+cd SympScan-Advanced-Medical-RAG-Knowledge-Graph-System
+git lfs install
+git lfs pull
+```
 
+### 2. Prepare the local artifacts
 
-## License
-This project is licensed under the **CC-BY (Creative Commons Attribution)** license.
+A fresh clone does not contain every generated model and data artifact. Before application startup, the workspace must contain:
+
+```text
+Semantic_Model.pkl
+Keyword_Model.pkl
+FAISS_Database/index.faiss
+FAISS_Database/index.pkl
+neo4j.cypher
+```
+
+Follow [Setup and reproducibility](docs/SETUP.md) to rebuild the ignored artifacts from the source dataset. Only load pickle/joblib artifacts that you created or obtained from a trusted source.
+
+### 3. Pull the Ollama model
+
+```bash
+ollama pull qwen2.5:0.5b-instruct-q5_k_m
+```
+
+### 4. Start the services
+
+> [!WARNING]
+> The tracked Compose file currently installs APOC Core only, while graph restoration calls `apoc.cypher.runFile`, which is supplied by APOC Extended in current Neo4j releases. Treat the command below as a development definition, not a verified one-command startup, until a compatible Neo4j plus APOC Core/Extended combination is configured and smoke-tested.
+
+Once the required artifacts and compatible Neo4j plugins are available:
+
+```bash
+docker compose up --build
+```
+
+Open [http://localhost:8501](http://localhost:8501). The first application load can take about a minute while retrieval and reranking resources initialize.
+
+## Build pipeline
+
+When rebuilding from the raw dataset, run the stages in this order:
+
+```bash
+python Raw_Dataset_PreProcess.py
+python Hybrid_Dual_Indexing.py
+python Vector_Database.py
+```
+
+Neo4j snapshot construction has additional environment requirements and is documented separately in [Setup and reproducibility](docs/SETUP.md). Artifact provenance, tracking rules, and security considerations are listed in [Data and artifacts](docs/DATA_AND_ARTIFACTS.md).
+
+## Default retrieval behavior
+
+The current default request path enables:
+
+- Intent detection and standalone query rewriting.
+- BM25 and FAISS retrieval.
+- Reciprocal-rank fusion within each retrieval path.
+- Cross-encoder reranking across the combined candidates.
+- Exact-name Neo4j lookup and graph-context reranking.
+- JSON parsing across at most three generation attempts total: the initial response plus up to two format-repair retries.
+
+Experimental source paths for query expansion, HyDE, chunk ordering, and extractive compression are present, but they are disabled and have not been validated in the default workflow. LLM-produced response and retrieval scores are logged as heuristic telemetry; they are not calibrated probabilities or clinical confidence measures.
+
+## Design decisions and trade-offs
+
+| Decision | Benefit | Trade-off |
+|---|---|---|
+| Sparse + dense retrieval | Covers exact terms and semantic similarity | Adds index and ranking complexity |
+| Local Ollama inference | Keeps inference under local operator control | Requires host setup and sufficient resources |
+| One-hop graph enrichment | Makes explicit dataset relationships retrievable | Exact entity matching limits recall |
+| Cross-encoder reranking | Reorders candidates using learned relevance scores | Adds startup time and query latency |
+| Structured JSON generation | Produces predictable UI fields | Parseability does not guarantee factual correctness |
+| Root-level runtime modules | Preserves serialized artifact compatibility | Delays migration to a conventional package layout |
+
+## Safety and current limitations
+
+- The system has no emergency escalation pathway, clinical validation, or regulatory approval.
+- Answers do not currently expose source-level citations in the UI.
+- Raw queries and generated answers are written to a local plaintext log; do not enter personal or protected health information.
+- The Streamlit resource cache holds a mutable RAG object, so the current implementation is intended for controlled local demonstration rather than multi-user deployment.
+- Most generated artifacts and the raw dataset are excluded from normal Git tracking; the FAISS index and Neo4j export are tracked exceptions.
+- Automated CI checks source syntax and repository structure; retrieval quality and medical correctness do not yet have benchmark tests.
+- Dependencies and the Neo4j container tag are not fully pinned.
+- The current Compose definition installs APOC Core but not the APOC Extended procedure used for graph restoration; startup remains unverified on current `neo4j:latest`.
+- Compose publishes Neo4j ports broadly and bind-mounts the repository read-write into the app container; use it only in a controlled local development environment.
+
+Read [Safety and limitations](docs/SAFETY_AND_LIMITATIONS.md) before running or extending the project.
+
+## Documentation
+
+- [Architecture](docs/ARCHITECTURE.md)
+- [Setup and reproducibility](docs/SETUP.md)
+- [Data and artifacts](docs/DATA_AND_ARTIFACTS.md)
+- [Safety and limitations](docs/SAFETY_AND_LIMITATIONS.md)
+- [Contributing](CONTRIBUTING.md)
+- [Security policy](SECURITY.md)
+
+## Roadmap
+
+- Add unit tests for pure retrieval utilities and integration tests with controlled fixtures.
+- Add retrieval evaluation with versioned queries, relevance judgments, and measurable metrics.
+- Surface chunk-level citations alongside generated answers.
+- Isolate conversation state per user session and introduce explicit retention controls.
+- Move configuration into validated environment settings and replace demonstration credentials.
+- Package the application after providing compatibility migration for existing serialized artifacts.
+
+## Dataset attribution
+
+This project uses the [SympScan – Symptoms to Disease dataset](https://www.kaggle.com/datasets/behzadhassan/sympscan-symptomps-to-disease). The raw CSV files are not tracked, but the repository does distribute derived snapshots: the FAISS index and a Git LFS-managed Neo4j export that contains transformed dataset-derived chunk text. Review the dataset page for its current provenance and usage terms before downloading, using, or redistributing either raw or derived material.
 
 ## Citation
-Do, Chi Khoa (2026). *SympScan: Advanced Medical RAG & Knowledge Graph System*.
 
-## Acknowledgements
+Citation metadata is provided in [CITATION.cff](CITATION.cff).
 
-This README structure is inspired by data documentation guidelines from:
+> Do, Chi Khoa (2026). *SympScan: Advanced Medical RAG & Knowledge Graph System*.
 
-- [Queen’s University README Template](https://guides.library.queensu.ca/ReadmeTemplate)  
-- [Cornell University Data Sharing README Guide](https://data.research.cornell.edu/data-management/sharing/readme/)  
+## License status
 
-
-This project utilizes the **SympScan - Symptomps to Disease Dataset**, available on Kaggle:
-
-- [SympScan - Symptomps to Disease](https://www.kaggle.com/datasets/behzadhassan/sympscan-symptomps-to-disease)
+No standalone, versioned software license file is currently included. Earlier repository text referred generally to “CC-BY,” but did not specify a version or complete terms. Until the project owner selects and adds a formal software license, do not assume reuse rights.
 
 ## Contact
-For inquiries regarding the architecture or medical dataset integration, contact [dochikhoa2006@gmail.com](mailto:dochikhoa2006@gmail.com).
+
+Chi Khoa Do — [dochikhoa2006@gmail.com](mailto:dochikhoa2006@gmail.com)
+
+Project repository: [Dochikhoa2006/SympScan-Advanced-Medical-RAG-Knowledge-Graph-System](https://github.com/Dochikhoa2006/SympScan-Advanced-Medical-RAG-Knowledge-Graph-System)

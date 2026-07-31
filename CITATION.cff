@@ -1,0 +1,21 @@
+cff-version: 1.2.0
+message: "If this project supports your work, please cite it using the metadata below."
+title: "SympScan: Advanced Medical RAG & Knowledge Graph System"
+type: software
+authors:
+  - family-names: "Do"
+    given-names: "Chi Khoa"
+repository-code: "https://github.com/Dochikhoa2006/SympScan-Advanced-Medical-RAG-Knowledge-Graph-System"
+url: "https://github.com/Dochikhoa2006/SympScan-Advanced-Medical-RAG-Knowledge-Graph-System"
+abstract: >-
+  An educational medical-information retrieval prototype combining BM25,
+  FAISS HNSW, Neo4j relationship retrieval, cross-encoder reranking,
+  Ollama generation, and a Streamlit interface.
+keywords:
+  - retrieval-augmented generation
+  - hybrid retrieval
+  - graph retrieval
+  - FAISS
+  - Neo4j
+  - medical NLP
+  - Ollama

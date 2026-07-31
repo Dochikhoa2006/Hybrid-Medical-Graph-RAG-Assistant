@@ -1,0 +1,57 @@
+name: Bug report
+description: Report a reproducible software problem without personal health data.
+title: "[Bug]: "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for helping improve SympScan. This tracker is for software issues, not medical guidance. Use fictional examples and remove credentials, logs, and personal information.
+
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: What happened, and what did you expect instead?
+      placeholder: Describe one clear problem.
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Reproduction steps
+      description: Provide the smallest sequence that reproduces the problem.
+      placeholder: |
+        1. Start services with ...
+        2. Use the fictional input ...
+        3. Observe ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Include OS, Python, Docker, Ollama model, and relevant dependency versions.
+      placeholder: macOS; Python 3.11; Docker Desktop ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: sanitized_output
+    attributes:
+      label: Sanitized output
+      description: Paste only the minimum safe traceback or output. Never attach Chat_History.log.
+      render: shell
+
+  - type: checkboxes
+    id: privacy
+    attributes:
+      label: Privacy confirmation
+      options:
+        - label: I removed secrets, personal data, medical records, and identifying health information.
+          required: true
+        - label: I understand this repository does not provide medical advice or emergency support.
+          required: true

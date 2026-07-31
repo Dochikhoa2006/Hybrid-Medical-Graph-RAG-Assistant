@@ -1,11 +1,50 @@
-__pycache__/
+# Operating-system files
 .DS_Store
-.venv/
-.env
+Thumbs.db
 
-SympScan
-*.pkl
-*.parquet
+# Editors and local tooling
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Python bytecode and caches
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.ipynb_checkpoints/
+.coverage
+.coverage.*
+htmlcov/
+build/
+dist/
+*.egg-info/
+
+# Virtual environments and local configuration
+.venv/
+venv/
+env/
+.env
+.env.*
+!.env.example
+
+# Logs and local runtime state
 *.log
 
+# Raw and generated data/model artifacts
+SympScan/
+*.pkl
+*.parquet
+Processed_Dataset.parquet/
+
+# Spark local state
+.sparkStaging/
+metastore_db/
+derby.log
+nltk_data/
+
+# Local helper notes
 run_script

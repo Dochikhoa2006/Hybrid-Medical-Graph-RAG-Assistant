@@ -1,0 +1,59 @@
+name: Syntax and structure
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: repository-quality-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  source-integrity:
+    name: Source integrity
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+
+      - name: Validate Python syntax
+        run: >-
+          python -m compileall -q
+          Augmented_Generation.py
+          Hybrid_Dual_Indexing.py
+          Inference.py
+          Knowledge_Graph.py
+          PreRetrival_and_PostRetrieval.py
+          Raw_Dataset_PreProcess.py
+          Retrieval.py
+          Vector_Database.py
+
+      - name: Verify repository contract
+        run: |
+          test -f README.md
+          test -f CITATION.cff
+          test -f Dockerfile
+          test -f docker-compose.yml
+          test -f requirements.txt
+          test -f docs/ARCHITECTURE.md
+          test -f docs/SETUP.md
+          test -f docs/DATA_AND_ARTIFACTS.md
+          test -f docs/SAFETY_AND_LIMITATIONS.md
+
+      - name: Check documentation whitespace
+        run: |
+          if git grep -nI -E '[[:blank:]]+$' -- README.md CONTRIBUTING.md SECURITY.md CITATION.cff docs .github; then
+            echo "Trailing whitespace found in repository documentation."
+            exit 1
+          fi
