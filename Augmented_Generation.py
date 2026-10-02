@@ -104,7 +104,7 @@ class RAG:
             ### REQUIRED JSON FORMAT (COPY EXACTLY):
             {{
             "answer": "concise 2-5 sentences",
-            "disease": "Disease mentioned in the text"
+            "disease": "Disease mentioned in the text",
             "medication": "Comma-separated of drugs mentioned",
             "advice": "Comma-separated list of precautions, dietary needs, exercises mentioned"
             }}
@@ -267,7 +267,7 @@ class RAG:
         else:
             response_text = str (response).strip ()
         
-        if response_text[-1] != ".":
+        if response_text and response_text[-1] != ".":
             response_text += "." 
         
         return response_text
@@ -283,9 +283,13 @@ class RAG:
 
         try:
             response = json.loads (response)
-        except:
+        except (TypeError, ValueError):
             return ""
-        
+
+        required_keys = ("answer", "disease", "medication", "advice") if self.intent == "RAG_SEARCH" else ("chitchat",)
+        if not isinstance (response, dict) or any (not isinstance (response.get (key), str) for key in required_keys):
+            return ""
+
         return response
 
     def response_content_check (self, response, query, relevance_threshold = 0.0):
