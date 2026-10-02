@@ -219,7 +219,7 @@ class Context_Processer:
 
     def context_retrieval_processing (self, chunks, rewritten_query, do_ordering, do_extractive_compression): 
 
-        chunk_content_ordered = self.ordering (chunks, rewritten_query, do_ordering)
+        chunk_content_ordered = self.ordering (chunks, do_ordering)
 
         if do_extractive_compression:
             chunk_content_summarized = self.extractive_compression (rewritten_query, chunk_content_ordered)

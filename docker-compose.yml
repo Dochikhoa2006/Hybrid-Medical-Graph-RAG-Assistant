@@ -4,7 +4,7 @@ services:
         container_name: medical-neo4j-db
         ports:
         - "7474:7474"
-        - "7687:7687"
+        - "7687:7687"   
         environment:
         - NEO4J_AUTH=neo4j/MedicalKnowledgeGraph
         - NEO4J_PLUGINS=["apoc"]

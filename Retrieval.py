@@ -90,6 +90,9 @@ class Retriever:
                 pairs.append ([rewrite_query, chunk_content])
                 merge_docs.append (chunk)
         
+        if not pairs:
+            return []
+
         cls_scores = self.rerank_model.predict (pairs)
         document_combine_with_cls_score = zip (merge_docs, cls_scores)
 
@@ -109,7 +112,7 @@ class Retriever:
     def hybrid_retrieval (self, user_query_processed_list, rewrite_query, do_keyword_search, do_semantic_search, do_RRF, do_cross_encoder, top_i_keyword_search = 64, top_j_semantic_search = 24):
 
         if not do_keyword_search and not do_semantic_search:
-            return ""
+            return []
 
         multi_query_keyword_chunks = []
         multi_query_semantic_chunks = []
@@ -126,12 +129,12 @@ class Retriever:
         if do_keyword_search and do_RRF:
             final_keyword_chunks = self.merge_multi_query_retrieval (multi_query_keyword_chunks)
         else:
-            final_keyword_chunks = multi_query_keyword_chunks
+            final_keyword_chunks = [chunk for results in multi_query_keyword_chunks for chunk in results]
 
         if do_semantic_search and do_RRF:
             final_semantic_chunks = self.merge_multi_query_retrieval (multi_query_semantic_chunks)
         else:
-            final_semantic_chunks = multi_query_semantic_chunks
+            final_semantic_chunks = [chunk for results in multi_query_semantic_chunks for chunk in results]
 
         if do_cross_encoder:
             final_top_k_chunks = self.merge_hybrid_query_retrieval (rewrite_query, final_keyword_chunks, final_semantic_chunks)
@@ -190,6 +193,9 @@ class Retriever:
         return merge_linearized_list
 
     def merge_multi_subgraph_cross_encoder (self, multi_query_graph_chunks, rewritten_query, keep_top_k_chunk = 5):
+
+        if not multi_query_graph_chunks:
+            return ""
 
         pairs = []
         for chunk in multi_query_graph_chunks:

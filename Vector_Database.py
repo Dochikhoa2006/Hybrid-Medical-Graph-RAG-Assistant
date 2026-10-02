@@ -26,7 +26,7 @@ class Vector_DB:
                                     docstore = InMemoryDocstore (),
                                     index_to_docstore_id = {},
                                     normalize_L2 = True)
-    
+
     def add_doc_to_vector_database (self, keyword_search_model):
 
         flatten_chunks = keyword_search_model.flatten_chunks
