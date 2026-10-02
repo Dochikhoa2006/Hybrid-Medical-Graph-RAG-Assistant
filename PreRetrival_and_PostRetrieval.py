@@ -10,7 +10,7 @@ class Context_Processer:
     def entity_extraction (self, hypothetical_answer_list, do_graph_search):
         
         if not do_graph_search:
-            return ""
+            return []
         
         entities_list = []
         for user_query in hypothetical_answer_list:
@@ -28,7 +28,7 @@ class Context_Processer:
 
                 Output Format Example:
                 Query: "Is Ibuprofen okay for my migraine?"
-                Output: DISEASE: ["Ibuprofen", "Migraine"] & MEDICATION: ["Insulin", "Aspirin"]
+                Output: DISEASE: ["Migraine"] & MEDICATION: ["Ibuprofen"]
 
                 Query: "{user_query}"
                 Output: (YOUR RESPONSE)
@@ -36,25 +36,14 @@ class Context_Processer:
             
             response = self.llm.invoke (prompt)
 
-            if "DISEASE:" in response:
-                disease = response.split ("DISEASE:")
-                disease = disease[-1].strip ()
-                disease_entities = re.findall (r'"([^"]*)"', disease)
-            else: 
-                disease_entities = re.findall (r'"([^"]*)"', response)
+            sections = {"disease": [], "medication": []}
+            for match in re.finditer (r'\b(DISEASE|MEDICATION)\s*:\s*\[([^\]]*)\]', response, re.IGNORECASE):
+                category = match.group (1).lower ()
+                names = re.findall (r'"([^"]+)"', match.group (2))
+                sections[category].extend (name.lower ().strip () for name in names if name.strip ())
 
-            if "MEDICATION:" in response:
-                medication = response.split ("MEDICATION:")
-                medication = medication[-1].strip ()
-                medication_entities = re.findall (r'"([^"]*)"', medication)
-            else: 
-                medication_entities = re.findall (r'"([^"]*)"', response)
-
-            if disease_entities == medication_entities:
-                medication_entities = ""
-
-            disease_entities = [entity.lower ().strip () for entity in disease_entities]
-            medication_entities = [entity.lower ().strip () for entity in medication_entities]
+            disease_entities = list (dict.fromkeys (sections["disease"]))
+            medication_entities = list (dict.fromkeys (sections["medication"]))
 
             entities_list.append ([disease_entities, medication_entities])
         
