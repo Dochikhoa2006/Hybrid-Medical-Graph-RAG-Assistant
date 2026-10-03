@@ -10,7 +10,7 @@ import re
 
 class RAG:
 
-    def __init__ (self, model = "qwen2.5:0.5b-instruct-q5_k_m", base_url = "http://host.docker.internal:11434", log_file_path = "Chat_History.log"):
+    def __init__ (self, model = "qwen2.5:0.5b-instruct-q5_k_m", base_url = "http://host.docker.internal:11434", log_file_path = "Chat_History.log", retriever = None):
 
         self.log_file_path = log_file_path
         self.chat_history = "No prior conversation"
@@ -24,34 +24,16 @@ class RAG:
         self.intent = ""
 
         self.llm = OllamaLLM (model = model, base_url = base_url)
-        self.retriever = Retriever ()
+        self.retriever = retriever if retriever is not None else Retriever ()
         self.context_processer = Context_Processer ()
         logging.basicConfig (filename = log_file_path, level = logging.INFO)
 
     def Summarize_Chat_History (self):
-        
-        try:
-            with open (self.log_file_path, "r") as file:
-                lines = file.readlines ()
-                line = lines[-1]
-        except:
+        if self.status != "success":
             return
-        
-        try:
-            line_json = json.loads (line)
 
-            user_query = line_json["RAW USER QUERY"]
-            rewritten_query = line_json["REWRITTEN USER QUERY"]
-            final_response = line_json["FINAL RESPONSE"]
-            status = line_json["STATUS"]
-
-            if status == "success":
-                text = f"- Previous Conversation | ORIGINAL USER QUERY: {user_query}. REWRITTEN USER QUERY: {rewritten_query}. ANSWER: {final_response}."
-            else:
-                return
-
-        except:
-            return
+        text = (f"- Previous Conversation | ORIGINAL USER QUERY: {self.user_query}. "
+                f"REWRITTEN USER QUERY: {self.rewritten_query}. ANSWER: {self.final_response}.")
 
         prompt = f"""
             ### SYSTEM ROLE: You are an expert context-distiller. Your task is to summarize the "Current Chat History Summary" with the "New Interaction" between a User and an AI into a concise, information-dense technical brief (If the New Interaction contradicts or updates the Current Summary, prioritize the New Interaction).

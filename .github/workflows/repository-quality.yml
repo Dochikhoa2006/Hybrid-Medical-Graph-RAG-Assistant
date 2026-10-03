@@ -39,6 +39,9 @@ jobs:
           Retrieval.py
           Vector_Database.py
 
+      - name: Test conversation state
+        run: python -m unittest discover -s tests -v
+
       - name: Verify repository contract
         run: |
           test -f README.md

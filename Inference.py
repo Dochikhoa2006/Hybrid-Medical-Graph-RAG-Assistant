@@ -1,5 +1,6 @@
 from Hybrid_Dual_Indexing import Keyword_Search, Semantic_Search
 from Augmented_Generation import RAG
+from Retrieval import Retriever
 import streamlit as st
 import time
 
@@ -7,22 +8,26 @@ import time
 st.set_page_config (page_title = "Healthcare Chatbot", page_icon = "🤖")
 
 @st.cache_resource
-def load_rag ():
-    return RAG ()
+def load_retriever ():
+    return Retriever ()
 
-if "rag_ready" not in st.session_state:
+if "rag" not in st.session_state:
     placeholder = st.empty ()
 
     with placeholder.container ():
         st.warning ("⚠️ **THIS MEDICAL RAG SYSTEM SHOULD TAKE 60s TO LOAD ! APOLOGIZE FOR THE SLOW.**")
-        rag = load_rag ()
+        rag = RAG (retriever = load_retriever ())
         
     placeholder.empty ()
-    st.session_state.rag_ready = True
-else:
-    rag = load_rag ()
+    st.session_state.rag = rag
+
+rag = st.session_state.rag
 
 st.title ("🤖 Healthcare AI Assistant with RAG")
+st.warning (
+    "Educational demo only. This app cannot diagnose conditions or guide treatment. "
+    "For a medical emergency, contact local emergency services."
+)
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
@@ -55,8 +60,7 @@ if prompt := st.chat_input ("Ask me anything..."):
         if response:
             st.markdown (response)
             st.session_state.messages.append ({"role": "assistant", "content": response})
-
-        rag.RAG_PostOnline_Phase()
+            rag.RAG_PostOnline_Phase()
 
 with st.sidebar:
     st.header ("Settings")
