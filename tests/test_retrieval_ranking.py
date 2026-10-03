@@ -44,6 +44,7 @@ class RetrievalRankingTests(unittest.TestCase):
             )
             module = importlib.util.module_from_spec(spec)
             spec.loader.exec_module(module)
+        cls.module = module
         cls.Retriever = module.Retriever
 
     def setUp(self):
@@ -76,6 +77,50 @@ class RetrievalRankingTests(unittest.TestCase):
         self.assertEqual(self.retriever.rerank_model.pairs, [
             ["user query", "graph context"]
         ])
+
+    def test_model_loader_restores_torch_after_success(self):
+        class Storage:
+            def __new__(cls, *args, **kwargs):
+                calls.append(kwargs.get("device"))
+                return object.__new__(cls)
+
+        class Model:
+            def to(self, device):
+                self.device = device
+
+        calls = []
+        original_new = Storage.__new__
+        torch = self.module.torch
+        torch.UntypedStorage = Storage
+        torch.serialization = types.SimpleNamespace()
+        model = Model()
+
+        def load(_path):
+            Storage(device="mps")
+            return model
+
+        self.module.joblib.load = load
+        self.assertIs(self.Retriever.load_semantic_model(), model)
+        self.assertEqual(calls, ["cpu"])
+        self.assertEqual(model.device, "cpu")
+        self.assertIs(Storage.__new__, original_new)
+        self.assertFalse(hasattr(torch.serialization, "_mps_deserialize"))
+
+    def test_model_loader_restores_torch_after_failure(self):
+        class Storage:
+            pass
+
+        original_new = Storage.__new__
+        torch = self.module.torch
+        torch.UntypedStorage = Storage
+        existing_deserializer = object()
+        torch.serialization = types.SimpleNamespace(_mps_deserialize=existing_deserializer)
+        self.module.joblib.load = lambda _path: (_ for _ in ()).throw(ValueError("bad model"))
+
+        with self.assertRaises(FileNotFoundError):
+            self.Retriever.load_semantic_model("missing-semantic-model.pkl")
+        self.assertIs(Storage.__new__, original_new)
+        self.assertIs(torch.serialization._mps_deserialize, existing_deserializer)
 
 
 if __name__ == "__main__":

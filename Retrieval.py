@@ -14,33 +14,38 @@ class Retriever:
         metadata = getattr (doc, "metadata", {}) or {}
         return (doc.page_content, json.dumps (metadata, sort_keys = True, default = str))
 
+    @staticmethod
+    def load_semantic_model (path = "Semantic_Model.pkl"):
+        original_storage_init = torch.UntypedStorage.__new__
+        had_mps_deserialize = hasattr (torch.serialization, '_mps_deserialize')
+
+        def patched_storage_new (cls, *args, **kwargs):
+            if kwargs.get ('device') == 'mps':
+                kwargs['device'] = 'cpu'
+            return original_storage_init (cls, *args, **kwargs)
+
+        torch.UntypedStorage.__new__ = patched_storage_new
+        if not had_mps_deserialize:
+            torch.serialization._mps_deserialize = lambda obj, location: obj.cpu ()
+
+        try:
+            try:
+                model = joblib.load (path)
+            except Exception:
+                with open (path, "rb") as file:
+                    model = torch.load (file, map_location = 'cpu', weights_only = False)
+
+            if hasattr (model, 'to'):
+                model.to ('cpu')
+            return model
+        finally:
+            torch.UntypedStorage.__new__ = original_storage_init
+            if not had_mps_deserialize:
+                delattr (torch.serialization, '_mps_deserialize')
+
     def __init__ (self):
 
-        # ONLY THIS PART IS GENERATED FROM GEMINI TO MOVE MY 'file.pkl' FROM MPS (MACBOOK) TO CPU (LINUX) FOR DOCKER
-        # ------------------------------------------------------------------------------------------------------------
-        original_storage_init = torch.UntypedStorage.__new__
-        def patched_storage_new(cls, *args, **kwargs):
-            if 'device' in kwargs and kwargs['device'] == 'mps':
-                kwargs['device'] = 'cpu'
-            return original_storage_init(cls, *args, **kwargs)
-        
-        torch.UntypedStorage.__new__ = patched_storage_new
-        if not hasattr(torch.serialization, '_mps_deserialize'):
-            torch.serialization._mps_deserialize = lambda obj, location: obj.cpu()
-        try:
-            self.semantic_search_model = joblib.load ("Semantic_Model.pkl")
-            if hasattr (self.semantic_search_model, 'to'):
-                self.semantic_search_model.to ('cpu')
-
-        except Exception:
-            with open ("Semantic_Model.pkl", "rb") as file:
-                self.semantic_search_model = torch.load (
-                    file, 
-                    map_location='cpu', 
-                    weights_only=False
-            )
-        torch.UntypedStorage.__new__ = original_storage_init
-        # ------------------------------------------------------------------------------------------------------------
+        self.semantic_search_model = self.load_semantic_model ()
 
         self.rerank_model = CrossEncoder ("cross-encoder/ms-marco-MiniLM-L-6-v2")
         self.inverted_index = joblib.load ("Keyword_Model.pkl")
