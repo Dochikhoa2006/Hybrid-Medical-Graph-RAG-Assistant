@@ -8,10 +8,11 @@ import re
 
 class Knowledge_Graphbase:
 
-    def __init__ (self, connection_URI = "bolt://my-neo4j:7687", user = "neo4j"):
+    def __init__ (self, connection_URI = None, user = "neo4j"):
 
         load_dotenv ()
         password = os.getenv ("AUTH")
+        connection_URI = connection_URI or os.getenv ("NEO4J_URI") or "bolt://my-neo4j:7687"
         self.driver = GraphDatabase.driver (connection_URI, auth = (user, password))
 
     def knowledge_graph_workflow_1 (self, writer, disease_name, medication, precaution):

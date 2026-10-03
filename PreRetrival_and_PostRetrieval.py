@@ -1,11 +1,13 @@
 from langchain_ollama import OllamaLLM
 import re
+import os
 
 class Context_Processer:
 
-    def __init__ (self):
+    def __init__ (self, model = "qwen2.5:0.5b-instruct-q5_k_m", base_url = None):
 
-        self.llm = OllamaLLM (model = "qwen2.5:0.5b-instruct-q5_k_m", base_url = "http://host.docker.internal:11434")
+        base_url = base_url or os.getenv ("OLLAMA_BASE_URL") or "http://host.docker.internal:11434"
+        self.llm = OllamaLLM (model = model, base_url = base_url)
 
     def entity_extraction (self, hypothetical_answer_list, do_graph_search):
         

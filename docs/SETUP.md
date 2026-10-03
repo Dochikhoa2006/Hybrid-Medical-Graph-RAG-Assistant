@@ -154,7 +154,7 @@ Open [http://localhost:8501](http://localhost:8501).
 
 The application may download the cross-encoder during the first startup if it is not cached. The `all-MiniLM-L6-v2` embedding model is acquired during artifact construction and subsequently loaded through `Semantic_Model.pkl`. Initial loading can take about one minute or longer depending on the host and cache state.
 
-The Compose environment declares `NEO4J_URI` and `OLLAMA_BASE_URL`, but the current Python classes do not consume them and instead use hard-coded service endpoints. Treat those variables as non-functional documentation until configuration handling is implemented and tested.
+The application reads `NEO4J_URI` and `OLLAMA_BASE_URL` from the environment. If unset, it uses `bolt://my-neo4j:7687` and `http://host.docker.internal:11434`, respectively. Constructor arguments can override either endpoint when using the Python classes directly.
 
 ## Verification checklist
 

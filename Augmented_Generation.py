@@ -6,11 +6,12 @@ import logging
 import json
 import ast
 import re
+import os
 
 
 class RAG:
 
-    def __init__ (self, model = "qwen2.5:0.5b-instruct-q5_k_m", base_url = "http://host.docker.internal:11434", log_file_path = "Chat_History.log", retriever = None):
+    def __init__ (self, model = "qwen2.5:0.5b-instruct-q5_k_m", base_url = None, log_file_path = "Chat_History.log", retriever = None):
 
         self.log_file_path = log_file_path
         self.chat_history = "No prior conversation"
@@ -23,9 +24,10 @@ class RAG:
         self.graph_text = ""
         self.intent = ""
 
+        base_url = base_url or os.getenv ("OLLAMA_BASE_URL") or "http://host.docker.internal:11434"
         self.llm = OllamaLLM (model = model, base_url = base_url)
         self.retriever = retriever if retriever is not None else Retriever ()
-        self.context_processer = Context_Processer ()
+        self.context_processer = Context_Processer (model = model, base_url = base_url)
         logging.basicConfig (filename = log_file_path, level = logging.INFO)
 
     def Summarize_Chat_History (self):

@@ -156,7 +156,7 @@ After a response, the model produces two heuristic scores for logging: response 
 
 Use a dedicated, disposable development database. Do not point the current implementation at a shared or production Neo4j database.
 
-The tracked Compose definition installs APOC Core through `NEO4J_PLUGINS=["apoc"]`. Current Neo4j releases provide `apoc.cypher.runFile` through APOC Extended, so graph restoration can fail until a compatible Extended plugin is installed and version-matched. Compose also declares `NEO4J_URI` and `OLLAMA_BASE_URL`, but the tracked Python classes use hard-coded endpoints; only `AUTH` is consumed from the environment for the graph password.
+The tracked Compose definition installs APOC Core through `NEO4J_PLUGINS=["apoc"]`. Current Neo4j releases provide `apoc.cypher.runFile` through APOC Extended, so graph restoration can fail until a compatible Extended plugin is installed and version-matched. The Python classes read `NEO4J_URI` and `OLLAMA_BASE_URL` from the environment, along with `AUTH` for the graph password.
 
 ## Compatibility constraint
 

@@ -58,7 +58,6 @@ Conversation state is held in each Streamlit session, while the retriever is cac
 - The tracked Compose file installs APOC Core only, while graph restoration requires an APOC Extended procedure on current Neo4j releases.
 - Compose exposes Neo4j ports on all host interfaces and bind-mounts the repository read-write into the app container.
 - Ollama is expected at a Docker Desktop host bridge address.
-- Declared `NEO4J_URI` and `OLLAMA_BASE_URL` values are not consumed by the current Python classes.
 - A fresh clone lacks several ignored runtime artifacts.
 - Loading local pickle/joblib metadata is safe only when the artifact source is trusted.
 - Neo4j readiness is not protected by an application-level health check.
