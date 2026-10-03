@@ -234,26 +234,28 @@ class RAG:
         return first_time_response, response, "success"
 
     def process_valid_response (self, response):
-        
-        try:
-            response = ast.literal_eval (response)
-        except:
-            pass
+        if isinstance (response, str):
+            try:
+                response = ast.literal_eval (response)
+            except (SyntaxError, ValueError):
+                pass
 
-        response_text = ""
-        if isinstance (response, list):
-            if isinstance (response, dict):
-                for item in response:
-                    response_text += ", ".join ([str (value) for value in item.values ()])
-            else:
-                response_text = ", ".join (response)
+        def flatten (value):
+            if isinstance (value, dict):
+                for item in value.values ():
+                    yield from flatten (item)
+            elif isinstance (value, (list, tuple)):
+                for item in value:
+                    yield from flatten (item)
+            elif value is not None:
+                text = str (value).strip ()
+                if text:
+                    yield text
 
-        else:
-            response_text = str (response).strip ()
-        
-        if response_text and response_text[-1] != ".":
-            response_text += "." 
-        
+        response_text = ", ".join (flatten (response))
+        if response_text and response_text[-1] not in ".?!":
+            response_text += "."
+
         return response_text
 
     def response_format_check (self, response):

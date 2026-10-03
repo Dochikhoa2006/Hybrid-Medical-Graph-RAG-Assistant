@@ -113,6 +113,15 @@ class ConversationStateTests(unittest.TestCase):
             record = json.loads(path.read_text().strip())
             self.assertEqual(record["RAW USER QUERY"], "Example question")
 
+    def test_response_formatting_flattens_nested_values(self):
+        rag = self.RAG.__new__(self.RAG)
+        self.assertEqual(
+            rag.process_valid_response('["Aspirin", {"other": ["Rest", "Water"]}]'),
+            "Aspirin, Rest, Water.",
+        )
+        self.assertEqual(rag.process_valid_response("Already complete?"), "Already complete?")
+        self.assertEqual(rag.process_valid_response("[]"), "")
+
 
 if __name__ == "__main__":
     unittest.main()
