@@ -4,9 +4,15 @@ from Vector_Database import Vector_DB
 from sentence_transformers import CrossEncoder
 import torch
 import joblib
+import json
 
 
 class Retriever:
+
+    @staticmethod
+    def document_key (doc):
+        metadata = getattr (doc, "metadata", {}) or {}
+        return (doc.page_content, json.dumps (metadata, sort_keys = True, default = str))
 
     def __init__ (self):
 
@@ -51,13 +57,13 @@ class Retriever:
             for rank, doc in enumerate (each_query_retrieval):
 
                 doc_rank = 1 / (decay_rank + rank)
-                doc_content = doc.page_content
-                raw_docs_mapping[doc_content] = doc
+                doc_key = self.document_key (doc)
+                raw_docs_mapping[doc_key] = doc
 
-                if doc_content in rank_docs:
-                    rank_docs[doc_content] += doc_rank
+                if doc_key in rank_docs:
+                    rank_docs[doc_key] += doc_rank
                 else:
-                    rank_docs[doc_content] = doc_rank
+                    rank_docs[doc_key] = doc_rank
 
         key = lambda item: item[1]
         rank_docs = sorted (rank_docs.items (), key = key, reverse = True)
@@ -67,8 +73,8 @@ class Retriever:
 
         for index in range (keep_top_k_chunk):
 
-            doc_content = rank_docs[index][0]
-            raw_doc = raw_docs_mapping[doc_content]
+            doc_key = rank_docs[index][0]
+            raw_doc = raw_docs_mapping[doc_key]
             raw_docs.append (raw_doc)
         
         return raw_docs
@@ -78,17 +84,14 @@ class Retriever:
         pairs = []
         merge_docs = []
 
-        if keyword_chunks:
-            for chunk in keyword_chunks:
-                chunk_content = chunk.page_content
-                pairs.append ([rewrite_query, chunk_content])
-                merge_docs.append (chunk)
-
-        if semantic_chunks:
-            for chunk in semantic_chunks:
-                chunk_content = chunk.page_content
-                pairs.append ([rewrite_query, chunk_content])
-                merge_docs.append (chunk)
+        seen = set ()
+        for chunk in (keyword_chunks or []) + (semantic_chunks or []):
+            doc_key = self.document_key (chunk)
+            if doc_key in seen:
+                continue
+            seen.add (doc_key)
+            pairs.append ([rewrite_query, chunk.page_content])
+            merge_docs.append (chunk)
         
         if not pairs:
             return []
@@ -199,7 +202,7 @@ class Retriever:
 
         pairs = []
         for chunk in multi_query_graph_chunks:
-            pairs.append ([chunk, rewritten_query])
+            pairs.append ([rewritten_query, chunk])
 
         cls_scores = self.rerank_model.predict (pairs)
         pairs = zip (multi_query_graph_chunks, cls_scores)
