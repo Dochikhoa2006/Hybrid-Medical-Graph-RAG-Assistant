@@ -2,7 +2,6 @@ from Hybrid_Dual_Indexing import Keyword_Search, Semantic_Search
 from PreRetrival_and_PostRetrieval import Context_Processer
 from Retrieval import Retriever
 from langchain_ollama import OllamaLLM
-import logging
 import json
 import ast
 import re
@@ -11,9 +10,11 @@ import os
 
 class RAG:
 
-    def __init__ (self, model = "qwen2.5:0.5b-instruct-q5_k_m", base_url = None, log_file_path = "Chat_History.log", retriever = None):
+    def __init__ (self, model = "qwen2.5:0.5b-instruct-q5_k_m", base_url = None, log_file_path = "Chat_History.log", retriever = None, log_interactions = None):
 
         self.log_file_path = log_file_path
+        self.log_interactions = (log_interactions if log_interactions is not None else
+                                 os.getenv ("ENABLE_CHAT_LOGGING", "false").lower () in ("1", "true", "yes", "on"))
         self.chat_history = "No prior conversation"
         self.user_query = ""
         self.rewritten_query = ""
@@ -28,7 +29,6 @@ class RAG:
         self.llm = OllamaLLM (model = model, base_url = base_url)
         self.retriever = retriever if retriever is not None else Retriever ()
         self.context_processer = Context_Processer (model = model, base_url = base_url)
-        logging.basicConfig (filename = log_file_path, level = logging.INFO)
 
     def Summarize_Chat_History (self):
         if self.status != "success":
@@ -347,6 +347,9 @@ class RAG:
         return score
     
     def Logging (self):
+
+        if not self.log_interactions:
+            return
 
         each_line = {"RAW USER QUERY": self.user_query,
                     "REWRITTEN USER QUERY": self.rewritten_query,

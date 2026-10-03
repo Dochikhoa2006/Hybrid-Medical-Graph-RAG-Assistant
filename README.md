@@ -178,8 +178,8 @@ Experimental source paths for query expansion, HyDE, chunk ordering, and extract
 
 - The system has no emergency escalation pathway, clinical validation, or regulatory approval.
 - Answers do not currently expose source-level citations in the UI.
-- Raw queries and generated answers are written to a local plaintext log; do not enter personal or protected health information.
-- The Streamlit resource cache holds a mutable RAG object, so the current implementation is intended for controlled local demonstration rather than multi-user deployment.
+- Plaintext interaction logging is disabled by default. Set `ENABLE_CHAT_LOGGING=true` only for a controlled local demo; do not enter personal or protected health information.
+- Conversation state is per Streamlit session, but the retriever and optional log are shared, so the current implementation is intended for controlled local demonstration rather than multi-user deployment.
 - Most generated artifacts and the raw dataset are excluded from normal Git tracking; the FAISS index and Neo4j export are tracked exceptions.
 - Automated CI checks source syntax and repository structure; retrieval quality and medical correctness do not yet have benchmark tests.
 - Dependencies and the Neo4j container tag are not fully pinned.
@@ -202,7 +202,7 @@ Read [Safety and limitations](docs/SAFETY_AND_LIMITATIONS.md) before running or 
 - Add unit tests for pure retrieval utilities and integration tests with controlled fixtures.
 - Add retrieval evaluation with versioned queries, relevance judgments, and measurable metrics.
 - Surface chunk-level citations alongside generated answers.
-- Isolate conversation state per user session and introduce explicit retention controls.
+- Introduce explicit retention controls for optional interaction logs.
 - Move configuration into validated environment settings and replace demonstration credentials.
 - Package the application after providing compatibility migration for existing serialized artifacts.
 

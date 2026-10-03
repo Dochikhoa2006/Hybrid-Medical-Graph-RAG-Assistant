@@ -29,7 +29,7 @@ The source comes from the [SympScan – Symptoms to Disease dataset](https://www
 | `FAISS_Database/index.faiss` | HNSW vector index | Tracked | Yes |
 | `FAISS_Database/index.pkl` | Docstore and ID mapping | Ignored | Yes |
 | `neo4j.cypher` | Graph snapshot | Git LFS | Yes |
-| `Chat_History.log` | Local JSONL interaction telemetry | Ignored | Created at runtime |
+| `Chat_History.log` | Optional local JSONL interaction telemetry | Ignored | Only when `ENABLE_CHAT_LOGGING=true` |
 
 The current FAISS snapshot contains 12,947 vectors with 384 dimensions in an `IndexHNSWFlat` index.
 
@@ -82,7 +82,7 @@ Do not commit generated binaries merely to make the repository appear self-conta
 
 ## Privacy and retention
 
-`Chat_History.log` contains raw questions, rewritten queries, retrieved context, responses, and LLM-generated telemetry. Health-related text may be sensitive even when names are omitted.
+When `ENABLE_CHAT_LOGGING=true`, `Chat_History.log` contains raw questions, rewritten queries, retrieved context, responses, and LLM-generated telemetry. Logging is disabled by default. Health-related text may be sensitive even when names are omitted.
 
 - Do not enter personal or protected health information into the demonstration.
 - Do not attach the log to issues or commits.

@@ -148,7 +148,7 @@ Symptoms, diets, and exercises are present in chunk text, not as dedicated graph
 
 The augmentation prompt combines reranked chunks and linearized graph relationships. Generation requests JSON-shaped output and allows at most three generation attempts total: the initial response plus up to two format-repair retries. The parser does not provide complete JSON Schema validation, and successful parsing does not establish medical correctness.
 
-After a response, the model produces two heuristic scores for logging: response quality and retrieval helpfulness. They are uncalibrated LLM self-assessments rather than probabilities, clinical confidence, or benchmark metrics.
+When `ENABLE_CHAT_LOGGING=true`, the model produces two heuristic scores for logging after a response: response quality and retrieval helpfulness. They are uncalibrated LLM self-assessments rather than probabilities, clinical confidence, or benchmark metrics.
 
 ## Startup behavior
 

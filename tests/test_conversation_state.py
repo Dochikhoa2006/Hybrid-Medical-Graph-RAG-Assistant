@@ -1,8 +1,10 @@
 """Regression checks for conversation state without loading model artifacts."""
 
 import importlib.util
+import json
 import os
 import sys
+import tempfile
 import types
 import unittest
 from pathlib import Path
@@ -25,13 +27,6 @@ class FakeContextProcesser:
 
 
 class ConversationStateTests(unittest.TestCase):
-    def setUp(self):
-        self.logging_patch = patch("logging.basicConfig")
-        self.logging_patch.start()
-
-    def tearDown(self):
-        self.logging_patch.stop()
-
     @classmethod
     def setUpClass(cls):
         modules = {
@@ -97,6 +92,26 @@ class ConversationStateTests(unittest.TestCase):
         explicit = self.RAG(retriever=object(), base_url="http://override.local:11434")
         self.assertEqual(explicit.llm.options["base_url"], "http://override.local:11434")
         self.assertEqual(explicit.context_processer.options["base_url"], "http://override.local:11434")
+
+    def test_chat_log_is_disabled_by_default(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "chat.log"
+            with patch.dict(os.environ, {"ENABLE_CHAT_LOGGING": "false"}):
+                rag = self.RAG(retriever=object(), log_file_path=str(path))
+            rag.user_query = "Sensitive question"
+            rag.Logging()
+            self.assertFalse(path.exists())
+            self.assertEqual(rag.llm.prompts, [])
+
+    def test_chat_log_can_be_enabled_explicitly(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "chat.log"
+            with patch.dict(os.environ, {"ENABLE_CHAT_LOGGING": "true"}):
+                rag = self.RAG(retriever=object(), log_file_path=str(path))
+            rag.user_query = "Example question"
+            rag.Logging()
+            record = json.loads(path.read_text().strip())
+            self.assertEqual(record["RAW USER QUERY"], "Example question")
 
 
 if __name__ == "__main__":
