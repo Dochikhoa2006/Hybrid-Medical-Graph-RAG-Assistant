@@ -1,6 +1,7 @@
 """Regression checks for retrieval fusion and reranking inputs."""
 
 import importlib.util
+import os
 import sys
 import types
 import unittest
@@ -121,6 +122,31 @@ class RetrievalRankingTests(unittest.TestCase):
             self.Retriever.load_semantic_model("missing-semantic-model.pkl")
         self.assertIs(Storage.__new__, original_new)
         self.assertIs(torch.serialization._mps_deserialize, existing_deserializer)
+
+    def test_graph_restore_requires_explicit_opt_in(self):
+        restored = []
+
+        class FakeGraph:
+            def load_local(self):
+                restored.append(True)
+
+        with (
+            patch.object(self.Retriever, "load_semantic_model", return_value=object()),
+            patch.object(self.module, "CrossEncoder", return_value=object()),
+            patch.object(self.module, "Vector_DB", return_value=object()),
+            patch.object(self.module, "Knowledge_Graphbase", side_effect=FakeGraph),
+            patch.object(self.module.joblib, "load", return_value=object(), create=True),
+        ):
+            with patch.dict(os.environ, {"RESTORE_GRAPH_SNAPSHOT": "false"}):
+                self.Retriever()
+            self.assertEqual(restored, [])
+
+            with patch.dict(os.environ, {"RESTORE_GRAPH_SNAPSHOT": "true"}):
+                self.Retriever()
+            self.assertEqual(restored, [True])
+
+            self.Retriever(restore_graph_snapshot=False)
+            self.assertEqual(restored, [True])
 
 
 if __name__ == "__main__":

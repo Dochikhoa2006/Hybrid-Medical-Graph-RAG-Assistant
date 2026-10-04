@@ -5,6 +5,7 @@ from sentence_transformers import CrossEncoder
 import torch
 import joblib
 import json
+import os
 
 
 class Retriever:
@@ -43,7 +44,7 @@ class Retriever:
             if not had_mps_deserialize:
                 delattr (torch.serialization, '_mps_deserialize')
 
-    def __init__ (self):
+    def __init__ (self, restore_graph_snapshot = None):
 
         self.semantic_search_model = self.load_semantic_model ()
 
@@ -51,7 +52,10 @@ class Retriever:
         self.inverted_index = joblib.load ("Keyword_Model.pkl")
         self.vector_database = Vector_DB (self.semantic_search_model, "LOAD_DATABASE")
         self.knowledge_database = Knowledge_Graphbase ()
-        self.knowledge_database.load_local ()
+        if restore_graph_snapshot is None:
+            restore_graph_snapshot = os.getenv ("RESTORE_GRAPH_SNAPSHOT", "false").lower () in ("1", "true", "yes", "on")
+        if restore_graph_snapshot:
+            self.knowledge_database.load_local ()
 
     def merge_multi_query_retrieval (self, multi_query_retrieval, decay_rank = 60, keep_top_k_chunk = 10):
 

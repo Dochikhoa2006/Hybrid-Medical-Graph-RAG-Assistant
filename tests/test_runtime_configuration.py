@@ -3,6 +3,7 @@
 import importlib.util
 import os
 import sys
+import tempfile
 import types
 import unittest
 from pathlib import Path
@@ -63,6 +64,69 @@ class RuntimeConfigurationTests(unittest.TestCase):
         self.assertEqual(calls[0], ("bolt://graph.local:7687", ("neo4j", "test-password")))
         self.assertEqual(calls[1][0], "bolt://explicit.local:7687")
         self.assertEqual(calls[2][0], "bolt://my-neo4j:7687")
+
+    def test_graph_restore_checks_snapshot_and_procedure_before_deleting(self):
+        neo4j = types.ModuleType("neo4j")
+        neo4j.GraphDatabase = types.SimpleNamespace(driver=lambda *_args, **_kwargs: None)
+        pyspark = types.ModuleType("pyspark")
+        pyspark.sql = types.ModuleType("pyspark.sql")
+        pyspark.sql.SparkSession = object
+        dotenv = types.ModuleType("dotenv")
+        dotenv.load_dotenv = lambda: None
+        modules = {
+            "neo4j": neo4j,
+            "pyspark": pyspark,
+            "pyspark.sql": pyspark.sql,
+            "dotenv": dotenv,
+            "joblib": types.ModuleType("joblib"),
+        }
+
+        class Session:
+            def __init__(self):
+                self.queries = []
+                self.procedure_count = 0
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *_args):
+                return False
+
+            def run(self, query, **kwargs):
+                self.queries.append((query, kwargs))
+                return types.SimpleNamespace(
+                    single=lambda: {"available": self.procedure_count},
+                    consume=lambda: None,
+                )
+
+        session = Session()
+        with patch.dict(sys.modules, modules):
+            graph = load_module("graph_restore_test", "Knowledge_Graph.py")
+        database = graph.Knowledge_Graphbase()
+        database.driver = types.SimpleNamespace(session=lambda: session)
+
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "neo4j.cypher"
+            with self.assertRaises(FileNotFoundError):
+                database.load_local(str(path))
+            self.assertEqual(session.queries, [])
+
+            path.write_text("version https://git-lfs.github.com/spec/v1\n")
+            with self.assertRaises(ValueError):
+                database.load_local(str(path))
+            self.assertEqual(session.queries, [])
+
+            path.write_text("CREATE (:Example);\n")
+            with self.assertRaises(RuntimeError):
+                database.load_local(str(path))
+            self.assertEqual(len(session.queries), 1)
+
+            session.queries.clear()
+            session.procedure_count = 1
+            database.load_local(str(path))
+            self.assertEqual(len(session.queries), 4)
+            self.assertIn("DETACH DELETE", session.queries[1][0])
+            self.assertEqual(session.queries[-1][1], {"path": "neo4j.cypher"})
 
 
 if __name__ == "__main__":

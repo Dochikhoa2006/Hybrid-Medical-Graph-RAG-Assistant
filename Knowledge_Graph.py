@@ -112,13 +112,24 @@ class Knowledge_Graphbase:
                 for relationship in result:
                     file.write (relationship["cypherStatements"])
 
-    def load_local (self):
+    def load_local (self, path = "neo4j.cypher"):
+
+        if not os.path.isfile (path):
+            raise FileNotFoundError (f"Neo4j snapshot not found: {path}")
+        with open (path, "rb") as snapshot:
+            if snapshot.read (64).startswith (b"version https://git-lfs.github.com/spec/v1"):
+                raise ValueError (f"Neo4j snapshot is a Git LFS pointer: {path}")
 
         with self.driver.session() as session:
+            procedure = session.run (
+                "SHOW PROCEDURES YIELD name WHERE name = 'apoc.cypher.runFile' RETURN count(*) AS available"
+            ).single ()
+            if not procedure or procedure["available"] == 0:
+                raise RuntimeError ("APOC Extended procedure apoc.cypher.runFile is unavailable")
 
             session.run ("MATCH (n) DETACH DELETE n")
             session.run ("CALL apoc.schema.assert ({}, {})")
-            session.run( "CALL apoc.cypher.runFile ('neo4j.cypher')")
+            session.run ("CALL apoc.cypher.runFile ($path)", path = os.path.basename (path)).consume ()
 
 
 if __name__ == '__main__':

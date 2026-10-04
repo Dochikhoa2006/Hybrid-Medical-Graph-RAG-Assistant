@@ -53,7 +53,7 @@ Conversation state is held in each Streamlit session, while the retriever is cac
 
 ## Operational limitations
 
-- Retriever startup deletes all nodes and drops existing indexes and constraints in the configured Neo4j database before attempting to restore the local Cypher snapshot.
+- Graph restoration is opt-in through `RESTORE_GRAPH_SNAPSHOT=true`; when enabled, it deletes all nodes and drops existing indexes and constraints before importing the local Cypher snapshot.
 - The default Neo4j password in Docker Compose is a demonstration credential.
 - The tracked Compose file installs APOC Core only, while graph restoration requires an APOC Extended procedure on current Neo4j releases.
 - Compose exposes Neo4j ports on all host interfaces and bind-mounts the repository read-write into the app container.

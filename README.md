@@ -138,6 +138,8 @@ docker compose up --build
 
 Open [http://localhost:8501](http://localhost:8501). The first application load can take about a minute while retrieval and reranking resources initialize.
 
+Graph restoration is disabled by default, so graph retrieval requires an already populated Neo4j database. On a dedicated disposable database with compatible APOC Core/Extended installed, set `RESTORE_GRAPH_SNAPSHOT=true` before `docker compose up --build` to restore `neo4j.cypher`; this deletes existing graph data. See [Setup and reproducibility](docs/SETUP.md).
+
 ## Build pipeline
 
 When rebuilding from the raw dataset, run the stages in this order:

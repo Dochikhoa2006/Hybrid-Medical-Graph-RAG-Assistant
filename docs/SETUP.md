@@ -111,7 +111,7 @@ Both FAISS files are required. `index.faiss` stores the vector index; `index.pkl
 
 ## Neo4j snapshot
 
-The tracked `neo4j.cypher` file is managed through Git LFS. `Retriever` attempts to load it during initialization. Confirm that LFS materialized the file rather than leaving a small pointer:
+The tracked `neo4j.cypher` file is managed through Git LFS. Graph restoration is disabled during normal retriever initialization. Confirm that LFS materialized the file rather than leaving a small pointer before explicitly restoring it:
 
 ```bash
 git lfs ls-files
@@ -128,9 +128,9 @@ Rebuilding the graph snapshot requires all of the following:
 The repository does not yet provide a portable, one-command graph regeneration environment. `Knowledge_Graph.py` constructs the graph and then exports it through APOC when those prerequisites are satisfied.
 
 > [!CAUTION]
-> Runtime initialization deletes all nodes and drops existing indexes and constraints in the configured Neo4j database before importing the tracked snapshot. Use only a dedicated disposable database.
+> Setting `RESTORE_GRAPH_SNAPSHOT=true` deletes all nodes and drops existing indexes and constraints in the configured Neo4j database before importing the tracked snapshot. Use only a dedicated disposable database.
 
-The tracked Compose file installs APOC Core with `NEO4J_PLUGINS=["apoc"]`, but current Neo4j releases provide `apoc.cypher.runFile` through APOC Extended. Graph restoration is therefore not a verified path with the current unpinned `neo4j:latest` definition until a compatible Extended plugin is installed and tested.
+The restore path checks that the snapshot is present and is not a Git LFS pointer, then checks that `apoc.cypher.runFile` is available before deleting data. These checks do not guarantee that the import will succeed. The tracked Compose file installs APOC Core with `NEO4J_PLUGINS=["apoc"]`, but current Neo4j releases provide `apoc.cypher.runFile` through APOC Extended. Graph restoration is therefore not a verified path with the current unpinned `neo4j:latest` definition until a compatible Extended plugin is installed and tested.
 
 ## Prepare Ollama
 
@@ -151,6 +151,14 @@ docker compose up --build
 ```
 
 Open [http://localhost:8501](http://localhost:8501).
+
+Graph retrieval requires an already populated Neo4j database. With a compatible Neo4j/APOC Core/Extended installation and a dedicated disposable database, explicitly restore the snapshot by starting the app with:
+
+```bash
+RESTORE_GRAPH_SNAPSHOT=true docker compose up --build
+```
+
+Do not use this setting against a database containing data you need to keep. Leave it unset for subsequent starts so the graph is not reset again.
 
 The application may download the cross-encoder during the first startup if it is not cached. The `all-MiniLM-L6-v2` embedding model is acquired during artifact construction and subsequently loaded through `Semantic_Model.pkl`. Initial loading can take about one minute or longer depending on the host and cache state.
 
