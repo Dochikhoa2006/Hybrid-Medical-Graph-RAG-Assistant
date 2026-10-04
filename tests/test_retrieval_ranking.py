@@ -148,6 +148,70 @@ class RetrievalRankingTests(unittest.TestCase):
             self.Retriever(restore_graph_snapshot=False)
             self.assertEqual(restored, [True])
 
+    def test_semantic_results_survive_keyword_failure(self):
+        passage = Doc("semantic passage", "SympScan")
+
+        def failed_search(*_args):
+            raise RuntimeError("index unavailable")
+
+        self.retriever.inverted_index = types.SimpleNamespace(search=failed_search)
+        self.retriever.vector_database = types.SimpleNamespace(search=lambda *_args: [passage])
+        with patch("logging.getLogger"):
+            results, warnings = self.retriever.hybrid_retrieval(
+                ["query"], "query", True, True, False, False, return_warnings=True
+            )
+        self.assertEqual(results, [passage])
+        self.assertEqual(len(warnings), 1)
+        self.assertIn("keyword searches failed", warnings[0])
+
+    def test_keyword_results_survive_semantic_failure_and_legacy_api(self):
+        passage = Doc("keyword passage", "SympScan")
+
+        def failed_search(*_args):
+            raise RuntimeError("index unavailable")
+
+        self.retriever.inverted_index = types.SimpleNamespace(search=lambda *_args: [passage])
+        self.retriever.vector_database = types.SimpleNamespace(search=failed_search)
+        with patch("logging.getLogger"):
+            results, warnings = self.retriever.hybrid_retrieval(
+                ["query"], "query", True, True, False, False, return_warnings=True
+            )
+            legacy_results = self.retriever.hybrid_retrieval(
+                ["query"], "query", True, True, False, False
+            )
+        self.assertEqual(results, [passage])
+        self.assertEqual(legacy_results, [passage])
+        self.assertIn("semantic searches failed", warnings[0])
+
+    def test_both_search_failures_return_no_evidence_with_warnings(self):
+        def failed_search(*_args):
+            raise RuntimeError("index unavailable")
+
+        self.retriever.inverted_index = types.SimpleNamespace(search=failed_search)
+        self.retriever.vector_database = types.SimpleNamespace(search=failed_search)
+        with patch("logging.getLogger"):
+            results, warnings = self.retriever.hybrid_retrieval(
+                ["first", "second"], "query", True, True, False, True, return_warnings=True
+            )
+        self.assertEqual(results, [])
+        self.assertEqual(len(warnings), 2)
+
+    def test_reranking_failure_falls_back_to_unique_interleaving(self):
+        shared = Doc("shared", "SympScan")
+        semantic = Doc("semantic", "SympScan")
+        self.retriever.inverted_index = types.SimpleNamespace(search=lambda *_args: [shared])
+        self.retriever.vector_database = types.SimpleNamespace(search=lambda *_args: [shared, semantic])
+        self.retriever.rerank_model = types.SimpleNamespace(
+            predict=lambda *_args: (_ for _ in ()).throw(RuntimeError("ranker unavailable"))
+        )
+        with patch("logging.getLogger"):
+            results, warnings = self.retriever.hybrid_retrieval(
+                ["query"], "query", True, True, False, True, return_warnings=True
+            )
+        self.assertEqual(results, [shared, semantic])
+        self.assertEqual(len(warnings), 1)
+        self.assertIn("Reranking was unavailable", warnings[0])
+
 
 if __name__ == "__main__":
     unittest.main()

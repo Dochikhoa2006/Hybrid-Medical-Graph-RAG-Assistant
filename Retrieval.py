@@ -6,6 +6,8 @@ import torch
 import joblib
 import json
 import os
+import logging
+from itertools import zip_longest
 
 
 class Retriever:
@@ -121,22 +123,48 @@ class Retriever:
         
         return raw_docs
 
-    def hybrid_retrieval (self, user_query_processed_list, rewrite_query, do_keyword_search, do_semantic_search, do_RRF, do_cross_encoder, top_i_keyword_search = 64, top_j_semantic_search = 24):
+    def interleave_unique (self, keyword_chunks, semantic_chunks):
+
+        merged = []
+        seen = set ()
+        for pair in zip_longest (keyword_chunks, semantic_chunks):
+            for chunk in pair:
+                if chunk is None:
+                    continue
+                key = self.document_key (chunk)
+                if key not in seen:
+                    seen.add (key)
+                    merged.append (chunk)
+        return merged
+
+    def hybrid_retrieval (self, user_query_processed_list, rewrite_query, do_keyword_search, do_semantic_search, do_RRF, do_cross_encoder, top_i_keyword_search = 64, top_j_semantic_search = 24, return_warnings = False):
+
+        warnings = []
 
         if not do_keyword_search and not do_semantic_search:
-            return []
+            return ([], warnings) if return_warnings else []
 
         multi_query_keyword_chunks = []
         multi_query_semantic_chunks = []
 
         for user_query_processed in user_query_processed_list:
             if do_keyword_search:
-                keyword_chunks = self.inverted_index.search (user_query_processed, top_i_keyword_search)
-                multi_query_keyword_chunks.append (keyword_chunks)
+                try:
+                    keyword_chunks = self.inverted_index.search (user_query_processed, top_i_keyword_search)
+                    multi_query_keyword_chunks.append (keyword_chunks)
+                except Exception as error:
+                    if "Some keyword searches failed; available results were used." not in warnings:
+                        warnings.append ("Some keyword searches failed; available results were used.")
+                    logging.getLogger (__name__).warning ("Keyword search failed: %s", type (error).__name__)
             
             if do_semantic_search:
-                semantic_chunks = self.vector_database.search (user_query_processed, top_j_semantic_search)
-                multi_query_semantic_chunks.append (semantic_chunks)
+                try:
+                    semantic_chunks = self.vector_database.search (user_query_processed, top_j_semantic_search)
+                    multi_query_semantic_chunks.append (semantic_chunks)
+                except Exception as error:
+                    if "Some semantic searches failed; available results were used." not in warnings:
+                        warnings.append ("Some semantic searches failed; available results were used.")
+                    logging.getLogger (__name__).warning ("Semantic search failed: %s", type (error).__name__)
         
         if do_keyword_search and do_RRF:
             final_keyword_chunks = self.merge_multi_query_retrieval (multi_query_keyword_chunks)
@@ -149,26 +177,16 @@ class Retriever:
             final_semantic_chunks = [chunk for results in multi_query_semantic_chunks for chunk in results]
 
         if do_cross_encoder:
-            final_top_k_chunks = self.merge_hybrid_query_retrieval (rewrite_query, final_keyword_chunks, final_semantic_chunks)
+            try:
+                final_top_k_chunks = self.merge_hybrid_query_retrieval (rewrite_query, final_keyword_chunks, final_semantic_chunks)
+            except Exception as error:
+                warnings.append ("Reranking was unavailable; results use retrieval order.")
+                logging.getLogger (__name__).warning ("Reranking failed: %s", type (error).__name__)
+                final_top_k_chunks = self.interleave_unique (final_keyword_chunks, final_semantic_chunks)
         else:
-            i, j = 0, 0
-            final_top_k_chunks = []
+            final_top_k_chunks = self.interleave_unique (final_keyword_chunks, final_semantic_chunks)
 
-            while i < len (final_keyword_chunks) and j < len (final_semantic_chunks):
-                final_top_k_chunks.append (final_keyword_chunks[i]) 
-                final_top_k_chunks.append (final_semantic_chunks[j])
-                i += 1
-                j += 1
-            
-            while i < len (final_keyword_chunks):
-                final_top_k_chunks.append (final_keyword_chunks[i])
-                i += 1
-            
-            while j < len (final_semantic_chunks):
-                final_top_k_chunks.append (final_semantic_chunks[j])
-                j += 1
-
-        return final_top_k_chunks
+        return (final_top_k_chunks, warnings) if return_warnings else final_top_k_chunks
         
     def linearize_entity_relationship (self, array_of_relationship, max_relationship = 3):
 

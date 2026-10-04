@@ -56,7 +56,10 @@ class RAG:
         understand, self.rewritten_query, self.intent = self.context_processer.user_query_understanding (self.user_query, self.chat_history, do_query_expansion, do_rewrite, do_query_HyDE, replace_query_by_HyDE)
 
         if self.intent == "RAG_SEARCH":
-            top_k_chunks = self.retriever.hybrid_retrieval (understand, self.rewritten_query, do_keyword_search, do_semantic_search, do_RRF, do_cross_encoder)
+            top_k_chunks, self.search_warnings = self.retriever.hybrid_retrieval (
+                understand, self.rewritten_query, do_keyword_search, do_semantic_search,
+                do_RRF, do_cross_encoder, return_warnings = True
+            )
             displayed_chunks = top_k_chunks if do_chunk_ordering else top_k_chunks[:5]
             self.retrieved_context = self.describe_retrieved_chunks (displayed_chunks)
             self.hybrid_text = self.context_processer.context_retrieval_processing (top_k_chunks, self.rewritten_query, do_chunk_ordering, do_extractive_compression)
@@ -360,6 +363,7 @@ class RAG:
                     "HYBRID RETRIEVAL": self.hybrid_text,
                     "GRAPH RETRIEVAL": self.graph_text,
                     "GRAPH WARNING": self.graph_warning,
+                    "SEARCH WARNINGS": self.search_warnings,
                     "FIRST RESPONSE": self.first_response,
                     "FINAL RESPONSE": self.final_response,
                     "RESPONSE CONFIDENCE (0-1)": response_score,
@@ -387,6 +391,7 @@ class RAG:
         self.intent = ""
         self.retrieved_context = []
         self.graph_warning = ""
+        self.search_warnings = []
 
     def has_retrieved_evidence (self):
 

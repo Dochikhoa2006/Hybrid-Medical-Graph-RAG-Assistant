@@ -34,6 +34,8 @@ If both retrieval paths return no usable text for a medical query, the applicati
 
 When graph lookup fails, the UI warns the user and can continue with retrieved passages alone. The warning is attached to that chat message; continuing does not establish that the passages are sufficient or correct.
 
+BM25, FAISS, and cross-encoder failures can also lead to a reduced retrieval path with a visible warning. Fallback ordering is not a substitute for relevance evaluation.
+
 ## Known implementation limitations
 
 - There is no emergency or red-flag classifier.

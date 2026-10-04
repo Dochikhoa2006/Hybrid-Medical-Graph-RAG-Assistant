@@ -156,6 +156,8 @@ For medical queries, the generation step is skipped when both retrieval paths re
 
 If graph entity extraction or Neo4j lookup fails after passage retrieval, the graph context is cleared and the UI shows a warning with that response. Generation can continue from retrieved passages. If no passage text is available, the request takes the abstention path.
 
+BM25 and FAISS searches fail independently. Successful results from either path can continue through ranking; if cross-encoder reranking fails, the retriever interleaves unique candidates in retrieval order. The UI attaches warnings to the response for failed search or ranking stages. If no usable graph or passage context remains, generation is skipped.
+
 When `ENABLE_CHAT_LOGGING=true`, the model produces two heuristic scores for logging after a response: response quality and retrieval helpfulness. They are uncalibrated LLM self-assessments rather than probabilities, clinical confidence, or benchmark metrics.
 
 ## Startup behavior

@@ -242,7 +242,7 @@ class ConversationStateTests(unittest.TestCase):
         rag.context_processer.context_retrieval_processing = lambda *_args: "Same passage"
         rag.context_processer.entity_extraction = lambda *_args: []
         rag.retriever = types.SimpleNamespace(
-            hybrid_retrieval=lambda *_args: [first, duplicate, second],
+            hybrid_retrieval=lambda *_args, **_kwargs: ([first, duplicate, second], []),
             graph_retrieve=lambda *_args: ["Disease A treated_with X"],
         )
 
@@ -270,7 +270,7 @@ class ConversationStateTests(unittest.TestCase):
         rag.context_processer.context_retrieval_processing = lambda *_args: "Prompt uses first five passages"
         rag.context_processer.entity_extraction = lambda *_args: []
         rag.retriever = types.SimpleNamespace(
-            hybrid_retrieval=lambda *_args: chunks,
+            hybrid_retrieval=lambda *_args, **_kwargs: (chunks, []),
             graph_retrieve=lambda *_args: "",
         )
 
@@ -292,7 +292,7 @@ class ConversationStateTests(unittest.TestCase):
             raise ConnectionError("Neo4j unavailable")
 
         rag.retriever = types.SimpleNamespace(
-            hybrid_retrieval=lambda *_args: [passage],
+            hybrid_retrieval=lambda *_args, **_kwargs: ([passage], ["Some keyword searches failed; available results were used."]),
             graph_retrieve=unavailable_graph,
         )
         rag.Generation = Mock(return_value=("raw", "answer", "success"))
@@ -301,11 +301,13 @@ class ConversationStateTests(unittest.TestCase):
             self.assertEqual(rag.RAG_Online_Phase("question"), "answer")
         self.assertEqual(rag.graph_text, "")
         self.assertIn("Graph lookup was unavailable", rag.graph_warning)
+        self.assertEqual(len(rag.search_warnings), 1)
         self.assertEqual(len(rag.retrieved_context), 1)
         rag.Generation.assert_called_once()
 
         rag.reset_request_state()
         self.assertEqual(rag.graph_warning, "")
+        self.assertEqual(rag.search_warnings, [])
 
     def test_graph_failure_without_passages_still_abstains(self):
         rag = self.RAG(retriever=object())
@@ -313,7 +315,7 @@ class ConversationStateTests(unittest.TestCase):
         rag.context_processer.context_retrieval_processing = lambda *_args: ""
         rag.context_processer.entity_extraction = lambda *_args: []
         rag.retriever = types.SimpleNamespace(
-            hybrid_retrieval=lambda *_args: [],
+            hybrid_retrieval=lambda *_args, **_kwargs: ([], []),
             graph_retrieve=Mock(side_effect=ConnectionError("Neo4j unavailable")),
         )
         rag.Generation = Mock(side_effect=AssertionError("generation should be skipped"))

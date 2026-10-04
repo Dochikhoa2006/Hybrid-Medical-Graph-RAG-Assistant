@@ -45,12 +45,17 @@ def show_graph_warning (warning):
     if warning:
         st.warning (warning)
 
+def show_search_warnings (warnings):
+    for warning in warnings:
+        st.warning (warning)
+
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
 for message in st.session_state.messages:
     with st.chat_message (message["role"]):
         st.markdown (message["content"])
+        show_search_warnings (message.get ("search_warnings", []))
         show_graph_warning (message.get ("graph_warning", ""))
         show_retrieved_context (message.get ("context", []))
 
@@ -78,12 +83,14 @@ if prompt := st.chat_input ("Ask me anything..."):
 
         if response:
             st.markdown (response)
+            show_search_warnings (rag.search_warnings)
             show_graph_warning (rag.graph_warning)
             context = rag.response_context_snapshot ()
             show_retrieved_context (context)
             st.session_state.messages.append ({
                 "role": "assistant", "content": response,
                 "context": context, "graph_warning": rag.graph_warning,
+                "search_warnings": rag.search_warnings.copy (),
             })
             try:
                 rag.RAG_PostOnline_Phase ()
