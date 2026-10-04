@@ -122,6 +122,21 @@ class ConversationStateTests(unittest.TestCase):
         self.assertEqual(rag.process_valid_response("Already complete?"), "Already complete?")
         self.assertEqual(rag.process_valid_response("[]"), "")
 
+    def test_json_parser_handles_extra_braces_and_validates_fields(self):
+        rag = self.RAG.__new__(self.RAG)
+        rag.intent = "CHITCHAT"
+        self.assertEqual(
+            rag.response_format_check('```json\n{"chitchat": "Hello"}\n``` Extra {note}'),
+            {"chitchat": "Hello"},
+        )
+        self.assertEqual(
+            rag.response_format_check('{"chitchat": 2} {"chitchat": "Hello"}'),
+            {"chitchat": "Hello"},
+        )
+        rag.intent = "RAG_SEARCH"
+        self.assertEqual(rag.response_format_check('{"answer": "Only one field"}'), "")
+        self.assertEqual(rag.response_format_check(None), "")
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -260,23 +260,22 @@ class RAG:
 
     def response_format_check (self, response):
 
-        response_match = re.search (r'\{.*\}', response, re.DOTALL)
-
-        if response_match:
-            response = response_match.group (0)
-        else:
-            response = re.sub (r'```json|```', '', response).strip ()
-
-        try:
-            response = json.loads (response)
-        except (TypeError, ValueError):
-            return ""
-
         required_keys = ("answer", "disease", "medication", "advice") if self.intent == "RAG_SEARCH" else ("chitchat",)
-        if not isinstance (response, dict) or any (not isinstance (response.get (key), str) for key in required_keys):
+        if not isinstance (response, str):
             return ""
 
-        return response
+        decoder = json.JSONDecoder ()
+        for match in re.finditer (r'\{', response):
+            try:
+                candidate, _ = decoder.raw_decode (response, match.start ())
+            except json.JSONDecodeError:
+                continue
+            if isinstance (candidate, dict) and all (
+                isinstance (candidate.get (key), str) for key in required_keys
+            ):
+                return candidate
+
+        return ""
 
     def response_content_check (self, response, query, relevance_threshold = 0.0):
 
