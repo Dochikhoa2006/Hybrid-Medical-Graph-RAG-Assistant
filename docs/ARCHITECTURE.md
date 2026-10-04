@@ -148,6 +148,8 @@ Symptoms, diets, and exercises are present in chunk text, not as dedicated graph
 
 The augmentation prompt combines reranked chunks and linearized graph relationships. Generation requests JSON-shaped output and allows at most three generation attempts total: the initial response plus up to two format-repair retries. The parser does not provide complete JSON Schema validation, and successful parsing does not establish medical correctness.
 
+For medical queries, the generation step is skipped when both retrieval paths return no usable text. The application returns an abstention message instead. This is a presence check, not a relevance or clinical-safety check.
+
 When `ENABLE_CHAT_LOGGING=true`, the model produces two heuristic scores for logging after a response: response quality and retrieval helpfulness. They are uncalibrated LLM self-assessments rather than probabilities, clinical confidence, or benchmark metrics.
 
 ## Startup behavior

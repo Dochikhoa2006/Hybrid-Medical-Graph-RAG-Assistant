@@ -179,6 +179,54 @@ class ConversationStateTests(unittest.TestCase):
             rag.RAG_PostOnline_Phase()
         self.assertEqual(events, ["summary", "cache", "logging"])
 
+    def test_medical_query_abstains_without_retrieved_evidence(self):
+        rag = self.RAG(retriever=object())
+
+        def empty_retrieval():
+            rag.intent = "RAG_SEARCH"
+            rag.rewritten_query = "medical question"
+            rag.hybrid_text = "  "
+            rag.graph_text = ["", "  "]
+
+        rag.Retrieval = empty_retrieval
+        rag.Augmentation = Mock(side_effect=AssertionError("augmentation should be skipped"))
+        rag.Generation = Mock(side_effect=AssertionError("generation should be skipped"))
+
+        answer = rag.RAG_Online_Phase("medical question")
+        self.assertIn("couldn't find supporting information", answer)
+        self.assertEqual(rag.status, "no_evidence")
+        self.assertEqual(rag.first_response, "")
+        rag.RAG_PostOnline_Phase()
+        self.assertEqual(rag.chat_history, "No prior conversation")
+        self.assertEqual(rag.llm.prompts, [])
+
+    def test_medical_query_with_evidence_reaches_generation(self):
+        rag = self.RAG(retriever=object())
+
+        def evidence_retrieval():
+            rag.intent = "RAG_SEARCH"
+            rag.rewritten_query = "medical question"
+            rag.hybrid_text = "Retrieved chunk"
+
+        rag.Retrieval = evidence_retrieval
+        rag.Augmentation = Mock(return_value="grounded prompt")
+        rag.Generation = Mock(return_value=("raw", "answer", "success"))
+
+        self.assertEqual(rag.RAG_Online_Phase("medical question"), "answer")
+        rag.Generation.assert_called_once_with("grounded prompt")
+
+    def test_abstention_log_has_no_model_generated_scores(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "chat.log"
+            rag = self.RAG(retriever=object(), log_file_path=str(path), log_interactions=True)
+            rag.status = "no_evidence"
+            rag.final_response = "No supporting information found"
+            rag.Logging()
+            record = json.loads(path.read_text().strip())
+            self.assertIsNone(record["RESPONSE CONFIDENCE (0-1)"])
+            self.assertIsNone(record["RETRIEVAL CONFIDENCE (0-1)"])
+            self.assertEqual(rag.llm.prompts, [])
+
 
 if __name__ == "__main__":
     unittest.main()

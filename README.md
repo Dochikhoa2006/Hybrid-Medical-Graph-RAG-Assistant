@@ -161,6 +161,7 @@ The current default request path enables:
 - Reciprocal-rank fusion within each retrieval path.
 - Cross-encoder reranking across the combined candidates.
 - Exact-name Neo4j lookup and graph-context reranking.
+- An abstention response for medical queries when retrieval returns no usable text.
 - JSON parsing across at most three generation attempts total: the initial response plus up to two format-repair retries.
 
 Experimental source paths for query expansion, HyDE, chunk ordering, and extractive compression are present, but they are disabled and have not been validated in the default workflow. LLM-produced response and retrieval scores are logged as heuristic telemetry; they are not calibrated probabilities or clinical confidence measures.

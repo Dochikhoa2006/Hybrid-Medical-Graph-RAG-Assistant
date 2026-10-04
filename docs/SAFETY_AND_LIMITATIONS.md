@@ -30,6 +30,8 @@ All retrieval context is derived from one community dataset snapshot. The Neo4j 
 
 Generated answers may be incomplete, outdated, incorrectly matched, or fabricated despite retrieval and JSON formatting. Structured output improves presentation consistency, not medical validity.
 
+If both retrieval paths return no usable text for a medical query, the application abstains without asking the generation model to answer. This checks only whether context is present; it does not establish relevance, accuracy, or clinical safety.
+
 ## Known implementation limitations
 
 - There is no emergency or red-flag classifier.

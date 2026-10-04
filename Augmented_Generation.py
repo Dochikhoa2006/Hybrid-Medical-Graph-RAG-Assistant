@@ -66,8 +66,8 @@ class RAG:
             prompt = f""" 
 
             ### SYSTEM ROLE: You are a Medical Knowledge Engine. Your task is to synthesize an answer to the User Question (supported by Chat History) using two specific data streams:
-            - Verified Facts: {self.graph_text}
-            - Supporting Detail: {self.hybrid_text}
+            - Dataset graph relationships: {self.graph_text}
+            - Retrieved dataset passages: {self.hybrid_text}
 
             ### USER QUESTION: {self.rewritten_query}
             ### CHAT HISTORY: {self.chat_history}
@@ -345,14 +345,20 @@ class RAG:
         if not self.log_interactions:
             return
 
+        response_score = None
+        retrieval_score = None
+        if self.status == "success":
+            response_score = self.response_content_check (self.final_response, self.user_query)[0]
+            retrieval_score = self.how_retrieval_helpful ()
+
         each_line = {"RAW USER QUERY": self.user_query,
                     "REWRITTEN USER QUERY": self.rewritten_query,
                     "HYBRID RETRIEVAL": self.hybrid_text,
                     "GRAPH RETRIEVAL": self.graph_text,
                     "FIRST RESPONSE": self.first_response,
                     "FINAL RESPONSE": self.final_response,
-                    "RESPONSE CONFIDENCE (0-1)": self.response_content_check (self.final_response, self.user_query)[0],
-                    "RETRIEVAL CONFIDENCE (0-1)": self.how_retrieval_helpful (),
+                    "RESPONSE CONFIDENCE (0-1)": response_score,
+                    "RETRIEVAL CONFIDENCE (0-1)": retrieval_score,
                     "STATUS": self.status
                     }
         each_line = json.dumps (each_line)
@@ -374,6 +380,17 @@ class RAG:
         self.hybrid_text = ""
         self.graph_text = ""
         self.intent = ""
+
+    def has_retrieved_evidence (self):
+
+        def has_content (value):
+            if isinstance (value, str):
+                return bool (value.strip ())
+            if isinstance (value, (list, tuple)):
+                return any (has_content (item) for item in value)
+            return bool (value)
+
+        return has_content (self.hybrid_text) or has_content (self.graph_text)
     
     def RAG_PostOnline_Phase (self):
 
@@ -386,6 +403,14 @@ class RAG:
         self.reset_request_state ()
         self.user_query = user_query
         self.Retrieval ()
+        if self.intent == "RAG_SEARCH" and not self.has_retrieved_evidence ():
+            self.status = "no_evidence"
+            self.final_response = (
+                "I couldn't find supporting information for this question in the available data. "
+                "Please ask a more specific question or consult a qualified healthcare professional."
+            )
+            return self.final_response
+
         prompt = self.Augmentation ()
         self.first_response, self.final_response, self.status = self.Generation (prompt)
 
