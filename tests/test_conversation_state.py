@@ -279,6 +279,52 @@ class ConversationStateTests(unittest.TestCase):
             "Passage 0", "Passage 1", "Passage 2", "Passage 3", "Passage 4"
         ])
 
+    def test_graph_failure_uses_passages_and_records_warning(self):
+        rag = self.RAG(retriever=object())
+        passage = types.SimpleNamespace(
+            page_content="Retrieved passage", metadata={"source": "SympScan"}
+        )
+        rag.context_processer.user_query_understanding = lambda *_args: (["question"], "question", "RAG_SEARCH")
+        rag.context_processer.context_retrieval_processing = lambda *_args: "Retrieved passage"
+        rag.context_processer.entity_extraction = lambda *_args: []
+
+        def unavailable_graph(*_args):
+            raise ConnectionError("Neo4j unavailable")
+
+        rag.retriever = types.SimpleNamespace(
+            hybrid_retrieval=lambda *_args: [passage],
+            graph_retrieve=unavailable_graph,
+        )
+        rag.Generation = Mock(return_value=("raw", "answer", "success"))
+
+        with patch("logging.getLogger"):
+            self.assertEqual(rag.RAG_Online_Phase("question"), "answer")
+        self.assertEqual(rag.graph_text, "")
+        self.assertIn("Graph lookup was unavailable", rag.graph_warning)
+        self.assertEqual(len(rag.retrieved_context), 1)
+        rag.Generation.assert_called_once()
+
+        rag.reset_request_state()
+        self.assertEqual(rag.graph_warning, "")
+
+    def test_graph_failure_without_passages_still_abstains(self):
+        rag = self.RAG(retriever=object())
+        rag.context_processer.user_query_understanding = lambda *_args: (["question"], "question", "RAG_SEARCH")
+        rag.context_processer.context_retrieval_processing = lambda *_args: ""
+        rag.context_processer.entity_extraction = lambda *_args: []
+        rag.retriever = types.SimpleNamespace(
+            hybrid_retrieval=lambda *_args: [],
+            graph_retrieve=Mock(side_effect=ConnectionError("Neo4j unavailable")),
+        )
+        rag.Generation = Mock(side_effect=AssertionError("generation should be skipped"))
+
+        with patch("logging.getLogger"):
+            answer = rag.RAG_Online_Phase("question")
+        self.assertEqual(rag.status, "no_evidence")
+        self.assertIn("couldn't find supporting information", answer)
+        self.assertIn("Graph lookup was unavailable", rag.graph_warning)
+        rag.Generation.assert_not_called()
+
 
 if __name__ == "__main__":
     unittest.main()

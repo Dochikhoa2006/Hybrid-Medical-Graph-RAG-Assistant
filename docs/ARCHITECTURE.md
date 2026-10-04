@@ -152,6 +152,8 @@ The Streamlit UI stores a copy of the retrieved passages and graph relationships
 
 For medical queries, the generation step is skipped when both retrieval paths return no usable text. The application returns an abstention message instead. This is a presence check, not a relevance or clinical-safety check.
 
+If graph entity extraction or Neo4j lookup fails after passage retrieval, the graph context is cleared and the UI shows a warning with that response. Generation can continue from retrieved passages. If no passage text is available, the request takes the abstention path.
+
 When `ENABLE_CHAT_LOGGING=true`, the model produces two heuristic scores for logging after a response: response quality and retrieval helpfulness. They are uncalibrated LLM self-assessments rather than probabilities, clinical confidence, or benchmark metrics.
 
 ## Startup behavior

@@ -161,6 +161,7 @@ The current default request path enables:
 - Reciprocal-rank fusion within each retrieval path.
 - Cross-encoder reranking across the combined candidates.
 - Exact-name Neo4j lookup and graph-context reranking.
+- A visible warning and passage-only answer path when graph lookup fails but passage retrieval succeeds.
 - An abstention response for medical queries when retrieval returns no usable text.
 - JSON parsing across at most three generation attempts total: the initial response plus up to two format-repair retries.
 

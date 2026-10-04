@@ -41,12 +41,17 @@ def show_retrieved_context (context):
             st.write (label)
             st.text (item["text"])
 
+def show_graph_warning (warning):
+    if warning:
+        st.warning (warning)
+
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
 for message in st.session_state.messages:
     with st.chat_message (message["role"]):
         st.markdown (message["content"])
+        show_graph_warning (message.get ("graph_warning", ""))
         show_retrieved_context (message.get ("context", []))
 
 if prompt := st.chat_input ("Ask me anything..."):
@@ -73,9 +78,13 @@ if prompt := st.chat_input ("Ask me anything..."):
 
         if response:
             st.markdown (response)
+            show_graph_warning (rag.graph_warning)
             context = rag.response_context_snapshot ()
             show_retrieved_context (context)
-            st.session_state.messages.append ({"role": "assistant", "content": response, "context": context})
+            st.session_state.messages.append ({
+                "role": "assistant", "content": response,
+                "context": context, "graph_warning": rag.graph_warning,
+            })
             try:
                 rag.RAG_PostOnline_Phase ()
             except Exception:

@@ -32,6 +32,8 @@ Generated answers may be incomplete, outdated, incorrectly matched, or fabricate
 
 If both retrieval paths return no usable text for a medical query, the application abstains without asking the generation model to answer. This checks only whether context is present; it does not establish relevance, accuracy, or clinical safety.
 
+When graph lookup fails, the UI warns the user and can continue with retrieved passages alone. The warning is attached to that chat message; continuing does not establish that the passages are sufficient or correct.
+
 ## Known implementation limitations
 
 - There is no emergency or red-flag classifier.
