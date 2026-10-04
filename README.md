@@ -180,7 +180,7 @@ Experimental source paths for query expansion, HyDE, chunk ordering, and extract
 ## Safety and current limitations
 
 - The system has no emergency escalation pathway, clinical validation, or regulatory approval.
-- Answers do not currently expose source-level citations in the UI.
+- The UI shows retrieved passages and graph relationships with each answer, but does not link individual claims to supporting passages.
 - Plaintext interaction logging is disabled by default. Set `ENABLE_CHAT_LOGGING=true` only for a controlled local demo; do not enter personal or protected health information.
 - Conversation state is per Streamlit session, but the retriever and optional log are shared, so the current implementation is intended for controlled local demonstration rather than multi-user deployment.
 - Most generated artifacts and the raw dataset are excluded from normal Git tracking; the FAISS index and Neo4j export are tracked exceptions.

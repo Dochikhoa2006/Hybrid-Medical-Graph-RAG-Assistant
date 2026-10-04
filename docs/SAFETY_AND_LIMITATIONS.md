@@ -36,7 +36,7 @@ If both retrieval paths return no usable text for a medical query, the applicati
 
 - There is no emergency or red-flag classifier.
 - There is no clinical evaluation set, clinician adjudication, or regulated validation.
-- The UI does not expose answer-level source citations.
+- The UI shows retrieved context with each answer, but does not verify or cite individual claims against it.
 - Graph lookup depends on LLM/regex entity extraction and exact normalized names.
 - Graph retrieval is one hop and does not perform clinical reasoning.
 - The embedding and reranking models are general-purpose rather than clinically validated for this dataset.

@@ -28,12 +28,26 @@ st.warning (
     "Educational demo only. This app cannot diagnose conditions or guide treatment. "
     "For a medical emergency, contact local emergency services."
 )
+
+def show_retrieved_context (context):
+    if not context:
+        return
+    with st.expander ("Retrieved context used for this answer"):
+        st.caption ("These are retrieved dataset records, not citations for individual claims.")
+        for index, item in enumerate (context, start = 1):
+            label = f"{index}. {item['kind']} — {item['source']}"
+            if item["disease"]:
+                label += f" ({item['disease']})"
+            st.write (label)
+            st.text (item["text"])
+
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
 for message in st.session_state.messages:
     with st.chat_message (message["role"]):
         st.markdown (message["content"])
+        show_retrieved_context (message.get ("context", []))
 
 if prompt := st.chat_input ("Ask me anything..."):
     st.chat_message ("user").markdown (prompt)
@@ -59,7 +73,9 @@ if prompt := st.chat_input ("Ask me anything..."):
 
         if response:
             st.markdown (response)
-            st.session_state.messages.append ({"role": "assistant", "content": response})
+            context = rag.response_context_snapshot ()
+            show_retrieved_context (context)
+            st.session_state.messages.append ({"role": "assistant", "content": response, "context": context})
             try:
                 rag.RAG_PostOnline_Phase ()
             except Exception:

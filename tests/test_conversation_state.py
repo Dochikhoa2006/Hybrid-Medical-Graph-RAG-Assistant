@@ -227,6 +227,58 @@ class ConversationStateTests(unittest.TestCase):
             self.assertIsNone(record["RETRIEVAL CONFIDENCE (0-1)"])
             self.assertEqual(rag.llm.prompts, [])
 
+    def test_retrieved_context_keeps_distinct_sources_and_graph(self):
+        rag = self.RAG(retriever=object())
+        first = types.SimpleNamespace(
+            page_content="Same passage", metadata={"source": "SympScan", "disease_name": "Disease A"}
+        )
+        duplicate = types.SimpleNamespace(
+            page_content="Same passage", metadata={"source": "SympScan", "disease_name": "Disease A"}
+        )
+        second = types.SimpleNamespace(
+            page_content="Same passage", metadata={"source": "Other source", "disease_name": "Disease B"}
+        )
+        rag.context_processer.user_query_understanding = lambda *_args: (["question"], "question", "RAG_SEARCH")
+        rag.context_processer.context_retrieval_processing = lambda *_args: "Same passage"
+        rag.context_processer.entity_extraction = lambda *_args: []
+        rag.retriever = types.SimpleNamespace(
+            hybrid_retrieval=lambda *_args: [first, duplicate, second],
+            graph_retrieve=lambda *_args: ["Disease A treated_with X"],
+        )
+
+        rag.Retrieval()
+        snapshot = rag.response_context_snapshot()
+        self.assertEqual(len(snapshot), 3)
+        self.assertEqual([item["source"] for item in snapshot], [
+            "SympScan", "Other source", "SympScan graph snapshot"
+        ])
+        self.assertEqual(snapshot[-1]["kind"], "Graph relationships")
+
+        rag.reset_request_state()
+        self.assertEqual(rag.retrieved_context, [])
+        self.assertEqual(len(snapshot), 3)
+        snapshot[0]["text"] = "changed in chat history"
+        self.assertEqual(first.page_content, "Same passage")
+
+    def test_displayed_passages_match_default_prompt_limit(self):
+        rag = self.RAG(retriever=object())
+        chunks = [
+            types.SimpleNamespace(page_content=f"Passage {index}", metadata={"source": "SympScan"})
+            for index in range(6)
+        ]
+        rag.context_processer.user_query_understanding = lambda *_args: (["question"], "question", "RAG_SEARCH")
+        rag.context_processer.context_retrieval_processing = lambda *_args: "Prompt uses first five passages"
+        rag.context_processer.entity_extraction = lambda *_args: []
+        rag.retriever = types.SimpleNamespace(
+            hybrid_retrieval=lambda *_args: chunks,
+            graph_retrieve=lambda *_args: "",
+        )
+
+        rag.Retrieval()
+        self.assertEqual([item["text"] for item in rag.retrieved_context], [
+            "Passage 0", "Passage 1", "Passage 2", "Passage 3", "Passage 4"
+        ])
+
 
 if __name__ == "__main__":
     unittest.main()

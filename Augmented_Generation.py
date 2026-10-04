@@ -56,9 +56,46 @@ class RAG:
 
         if self.intent == "RAG_SEARCH":
             top_k_chunks = self.retriever.hybrid_retrieval (understand, self.rewritten_query, do_keyword_search, do_semantic_search, do_RRF, do_cross_encoder)
+            displayed_chunks = top_k_chunks if do_chunk_ordering else top_k_chunks[:5]
+            self.retrieved_context = self.describe_retrieved_chunks (displayed_chunks)
             self.hybrid_text = self.context_processer.context_retrieval_processing (top_k_chunks, self.rewritten_query, do_chunk_ordering, do_extractive_compression)
             entities_list = self.context_processer.entity_extraction (understand, do_graph_search)
             self.graph_text = self.retriever.graph_retrieve (entities_list, self.rewritten_query, do_graph_search, do_cross_encoder)
+            graph_text = self.graph_text if isinstance (self.graph_text, str) else "\n".join (self.graph_text or [])
+            if graph_text.strip ():
+                self.retrieved_context.append ({
+                    "kind": "Graph relationships",
+                    "source": "SympScan graph snapshot",
+                    "disease": "",
+                    "text": graph_text.strip (),
+                })
+
+    @staticmethod
+    def describe_retrieved_chunks (chunks):
+
+        context = []
+        seen = set ()
+        for chunk in chunks:
+            text = chunk.page_content.strip ()
+            if not text:
+                continue
+            metadata = getattr (chunk, "metadata", {}) or {}
+            source = str (metadata.get ("source") or "Unknown source")
+            disease = str (metadata.get ("disease_name") or "")
+            identity = (source, disease, text)
+            if identity in seen:
+                continue
+            seen.add (identity)
+            context.append ({
+                "kind": "Retrieved passage",
+                "source": source,
+                "disease": disease,
+                "text": text,
+            })
+        return context
+
+    def response_context_snapshot (self):
+        return [item.copy () for item in self.retrieved_context]
 
     def Augmentation (self):
 
@@ -380,6 +417,7 @@ class RAG:
         self.hybrid_text = ""
         self.graph_text = ""
         self.intent = ""
+        self.retrieved_context = []
 
     def has_retrieved_evidence (self):
 
