@@ -167,76 +167,36 @@ class RAG:
 
     def Prompt_Fixed_after_Fail_Format_Check (self, fail_response, fail_times):
 
-        if self.intent == "RAG_SEARCH":
-            if fail_times == 1:
-                fix_instruction = f"""
-                    ### FAILED ATTEMPT FIX INSTRUCTIONS:
-                        1. Ensure the response is a single, valid JSON object.
-                        2. Remove markdown code blocks like ```json.
-                        3. No text before or after the JSON.
-                        4. If a value is empty, use "".
-                        5. Ensure all quotes are double quotes (").
-                        6. Do not add any conversational text.
-                        7. Ensure all keys ("answer", "disease", "medication", "advice") are present.
-                """
-            else:
-                fix_instruction = ""
-            
-            prompt = fix_instruction + f"""
-                ### RECTIFICATION NOTICE {fail_times}: Your previous responses failed the JSON schema check. 
-                ### PREVIOUS FAILED ATTEMPT {fail_times}: {fail_response}
-            """
-        
-        else:
-            if fail_times == 1:
-                fix_instruction = f"""
-                    ### FAILED ATTEMPT FIX INSTRUCTIONS:
-                        1. Ensure the response is a single, valid JSON object.
-                        2. Remove markdown code blocks like ```json.
-                        3. No text before or after the JSON.
-                        4. If a value is empty, use "".
-                        5. Ensure all quotes are double quotes (").
-                        6. Do not add any conversational text.
-                        7. Ensure the key ("chitchat") are present.
-                """
-            else:
-                fix_instruction = ""
+        keys = ("answer", "disease", "medication", "advice") if self.intent == "RAG_SEARCH" else ("chitchat",)
+        previous_output = json.dumps (str (fail_response)[:1200], ensure_ascii = False)
+        return (f"\n### JSON REPAIR ATTEMPT {fail_times}\n"
+                "Return exactly one valid JSON object with string values and no surrounding text. "
+                f"Required keys: {', '.join (keys)}.\n"
+                f"Previous invalid output (truncated to 1200 characters): {previous_output}\n")
 
-            prompt = fix_instruction + f"""
-                ### RECTIFICATION NOTICE {fail_times}: Your previous responses failed the JSON schema check. 
-                ### PREVIOUS FAILED ATTEMPT {fail_times}: {fail_response}
-            """ 
-        
-        return prompt        
+    def Generation (self, prompt, format_fail = 3):
 
-    def Generation (self, prompt, format_fail = 3, content_fail = 1):
+        if not isinstance (format_fail, int) or format_fail < 1:
+            raise ValueError ("format_fail must be a positive integer")
 
         first_time_response = ""
-        format_fail_i = 0
-        content_fail_j = 0
-
-        while format_fail_i < format_fail and content_fail_j < content_fail:
-            response_before_check = self.llm.invoke (prompt)
-            if first_time_response == "":
+        previous_response = ""
+        for attempt in range (format_fail):
+            attempt_prompt = prompt
+            if attempt:
+                attempt_prompt += self.Prompt_Fixed_after_Fail_Format_Check (previous_response, attempt)
+            response_before_check = self.llm.invoke (attempt_prompt)
+            if attempt == 0:
                 first_time_response = response_before_check
 
             response = self.response_format_check (response_before_check)
-            if response == "":
-                format_fail_i += 1
-                prompt += self.Prompt_Fixed_after_Fail_Format_Check (response_before_check, format_fail_i)
-            else:
+            if response != "":
                 break
-
-        if format_fail_i >= format_fail or content_fail_j >= content_fail:
-            response = ("### ⚠️ System Note\n"
-                        "**I'm sorry, but I couldn't find a specific medical response for that query.**\n\n"
-                        "--- \n"
-                        "**Possible reasons:**\n"
-                        "* The query was too vague.\n"
-                        "* The topic falls outside my medical knowledge base.\n"
-                        "* The system encountered a retrieval error.\n\n"
-                        "👉 *Try rephrasing your question with more specific symptoms.*")
-            return first_time_response, response, "fail"
+            previous_response = response_before_check
+        else:
+            return (first_time_response,
+                    "### ⚠️ System Note\nI couldn't format a response to that question. Please rephrase and try again.",
+                    "fail")
 
         if self.intent == "RAG_SEARCH":
             answer = response.get ("answer") or "The system doesn't have an answer for yours"

@@ -325,6 +325,41 @@ class ConversationStateTests(unittest.TestCase):
         self.assertIn("Graph lookup was unavailable", rag.graph_warning)
         rag.Generation.assert_not_called()
 
+    def test_generation_repairs_from_latest_bounded_output(self):
+        rag = self.RAG(retriever=object())
+        rag.intent = "CHITCHAT"
+        first_invalid = "A" * 5000
+        second_invalid = "B" * 5000
+        rag.llm.invoke = Mock(side_effect=[
+            first_invalid, second_invalid, '{"chitchat": "Hello"}'
+        ])
+
+        first, answer, status = rag.Generation("BASE PROMPT", format_fail=3)
+        self.assertEqual(first, first_invalid)
+        self.assertEqual(status, "success")
+        self.assertIn("Hello", answer)
+        prompts = [call.args[0] for call in rag.llm.invoke.call_args_list]
+        self.assertEqual(len(prompts), 3)
+        self.assertEqual(prompts[0], "BASE PROMPT")
+        self.assertLess(len(prompts[1]), 1500)
+        self.assertLess(len(prompts[2]), 1500)
+        self.assertIn("B" * 100, prompts[2])
+        self.assertNotIn("A" * 100, prompts[2])
+
+    def test_generation_stops_after_format_attempt_limit(self):
+        rag = self.RAG(retriever=object())
+        rag.intent = "RAG_SEARCH"
+        rag.llm.invoke = Mock(return_value="not JSON")
+
+        first, answer, status = rag.Generation("BASE PROMPT", format_fail=2)
+        self.assertEqual(first, "not JSON")
+        self.assertEqual(status, "fail")
+        self.assertIn("couldn't format a response", answer)
+        self.assertEqual(rag.llm.invoke.call_count, 2)
+
+        with self.assertRaises(ValueError):
+            rag.Generation("BASE PROMPT", format_fail=0)
+
 
 if __name__ == "__main__":
     unittest.main()

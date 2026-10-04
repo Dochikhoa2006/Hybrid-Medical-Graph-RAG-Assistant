@@ -148,6 +148,8 @@ Symptoms, diets, and exercises are present in chunk text, not as dedicated graph
 
 The augmentation prompt combines reranked chunks and linearized graph relationships. Generation requests JSON-shaped output and allows at most three generation attempts total: the initial response plus up to two format-repair retries. The parser does not provide complete JSON Schema validation, and successful parsing does not establish medical correctness.
 
+Each format-repair retry starts from the original augmentation prompt and adds only the latest invalid response, truncated to 1,200 characters. After the attempt limit, the UI receives a generic formatting-failure message.
+
 The Streamlit UI stores a copy of the retrieved passages and graph relationships with each assistant message and shows them in an expander. The source label comes from chunk metadata or the dataset graph snapshot. This is context transparency, not claim-level citation or verification.
 
 For medical queries, the generation step is skipped when both retrieval paths return no usable text. The application returns an abstention message instead. This is a presence check, not a relevance or clinical-safety check.

@@ -164,6 +164,7 @@ The current default request path enables:
 - A visible warning and passage-only answer path when graph lookup fails but passage retrieval succeeds.
 - An abstention response for medical queries when retrieval returns no usable text.
 - JSON parsing across at most three generation attempts total: the initial response plus up to two format-repair retries.
+- Each retry starts from the original prompt and includes at most 1,200 characters of the latest malformed output.
 
 Experimental source paths for query expansion, HyDE, chunk ordering, and extractive compression are present, but they are disabled and have not been validated in the default workflow. LLM-produced response and retrieval scores are logged as heuristic telemetry; they are not calibrated probabilities or clinical confidence measures.
 
