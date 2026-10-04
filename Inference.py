@@ -60,7 +60,10 @@ if prompt := st.chat_input ("Ask me anything..."):
         if response:
             st.markdown (response)
             st.session_state.messages.append ({"role": "assistant", "content": response})
-            rag.RAG_PostOnline_Phase()
+            try:
+                rag.RAG_PostOnline_Phase ()
+            except Exception:
+                st.warning ("The answer was shown, but conversation follow-up processing failed.")
 
 with st.sidebar:
     st.header ("Settings")

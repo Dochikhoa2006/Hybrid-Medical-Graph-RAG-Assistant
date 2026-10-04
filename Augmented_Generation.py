@@ -16,14 +16,7 @@ class RAG:
         self.log_interactions = (log_interactions if log_interactions is not None else
                                  os.getenv ("ENABLE_CHAT_LOGGING", "false").lower () in ("1", "true", "yes", "on"))
         self.chat_history = "No prior conversation"
-        self.user_query = ""
-        self.rewritten_query = ""
-        self.first_response = ""
-        self.final_response = ""
-        self.status = ""
-        self.hybrid_text = ""
-        self.graph_text = ""
-        self.intent = ""
+        self.reset_request_state ()
 
         base_url = base_url or os.getenv ("OLLAMA_BASE_URL") or "http://host.docker.internal:11434"
         self.llm = OllamaLLM (model = model, base_url = base_url)
@@ -370,15 +363,27 @@ class RAG:
     def Caching (self):
 
         pass
+
+    def reset_request_state (self):
+
+        self.user_query = ""
+        self.rewritten_query = ""
+        self.first_response = ""
+        self.final_response = ""
+        self.status = ""
+        self.hybrid_text = ""
+        self.graph_text = ""
+        self.intent = ""
     
     def RAG_PostOnline_Phase (self):
 
-        self.Logging ()
-        self.Caching ()
         self.Summarize_Chat_History ()
+        self.Caching ()
+        self.Logging ()
 
     def RAG_Online_Phase (self, user_query):
 
+        self.reset_request_state ()
         self.user_query = user_query
         self.Retrieval ()
         prompt = self.Augmentation ()

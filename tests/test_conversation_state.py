@@ -8,7 +8,7 @@ import tempfile
 import types
 import unittest
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 
 class FakeLLM:
@@ -136,6 +136,48 @@ class ConversationStateTests(unittest.TestCase):
         rag.intent = "RAG_SEARCH"
         self.assertEqual(rag.response_format_check('{"answer": "Only one field"}'), "")
         self.assertEqual(rag.response_format_check(None), "")
+
+    def test_new_request_clears_previous_retrieval_context(self):
+        rag = self.RAG(retriever=object())
+        rag.chat_history = "Previous summary"
+        rag.hybrid_text = "Previous medical chunks"
+        rag.graph_text = "Previous graph facts"
+        rag.first_response = "Previous raw answer"
+        rag.context_processer.user_query_understanding = lambda *_args: (None, "hello", "CHITCHAT")
+        rag.Generation = lambda _prompt: ("new raw answer", "new answer", "success")
+
+        self.assertEqual(rag.RAG_Online_Phase("hello"), "new answer")
+        self.assertEqual(rag.hybrid_text, "")
+        self.assertEqual(rag.graph_text, "")
+        self.assertEqual(rag.first_response, "new raw answer")
+        self.assertEqual(rag.chat_history, "Previous summary")
+
+    def test_request_state_is_cleared_even_when_retrieval_fails(self):
+        rag = self.RAG(retriever=object())
+        rag.hybrid_text = "Old chunks"
+        rag.status = "success"
+        rag.Retrieval = Mock(side_effect=RuntimeError("retrieval failed"))
+
+        with self.assertRaises(RuntimeError):
+            rag.RAG_Online_Phase("new question")
+        self.assertEqual(rag.user_query, "new question")
+        self.assertEqual(rag.hybrid_text, "")
+        self.assertEqual(rag.status, "")
+
+    def test_summary_runs_before_optional_logging_failure(self):
+        rag = self.RAG(retriever=object())
+        events = []
+        rag.Summarize_Chat_History = lambda: events.append("summary")
+        rag.Caching = lambda: events.append("cache")
+
+        def failed_logging():
+            events.append("logging")
+            raise OSError("disk full")
+
+        rag.Logging = failed_logging
+        with self.assertRaises(OSError):
+            rag.RAG_PostOnline_Phase()
+        self.assertEqual(events, ["summary", "cache", "logging"])
 
 
 if __name__ == "__main__":
