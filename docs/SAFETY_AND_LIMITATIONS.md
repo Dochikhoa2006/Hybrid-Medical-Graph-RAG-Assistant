@@ -55,6 +55,8 @@ BM25, FAISS, and cross-encoder failures can also lead to a reduced retrieval pat
 
 Interaction logging is disabled by default. If `ENABLE_CHAT_LOGGING=true`, the application writes raw questions, retrieved content, answers, and telemetry to `Chat_History.log` in plaintext. It does not provide consent management, encryption at rest, a retention policy, data-subject controls, or audit-grade access controls.
 
+“Clear This Session” removes visible messages and in-memory request and summary state for that Streamlit session. It does not delete `Chat_History.log` when logging is enabled.
+
 Conversation state is held in each Streamlit session, while the retriever is cached across sessions. When logging is enabled, raw interaction details go to one shared plaintext log, so the current design is suitable for a controlled demonstration, not a shared service.
 
 ## Operational limitations

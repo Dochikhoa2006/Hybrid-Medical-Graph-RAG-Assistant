@@ -100,9 +100,10 @@ if prompt := st.chat_input ("Ask me anything..."):
 with st.sidebar:
     st.header ("Settings")
 
-    if st.button ("Clear Chat History"):
-        if hasattr (rag, 'chat_history'):
-            rag.chat_history = "No prior conversation"
-
+    if st.button ("Clear This Session"):
+        rag.clear_conversation ()
         st.session_state.messages = []
         st.rerun ()
+
+    if rag.log_interactions:
+        st.caption ("Clearing this session does not erase the optional Chat_History.log file.")

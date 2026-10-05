@@ -362,6 +362,34 @@ class ConversationStateTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             rag.Generation("BASE PROMPT", format_fail=0)
 
+    def test_clear_conversation_removes_session_state_but_keeps_optional_log(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "chat.log"
+            path.write_text("existing log entry\n")
+            retriever = object()
+            rag = self.RAG(retriever=retriever, log_file_path=str(path), log_interactions=True)
+            rag.chat_history = "Prior discussion"
+            rag.user_query = "Sensitive question"
+            rag.final_response = "Prior answer"
+            rag.hybrid_text = "Prior retrieved passage"
+            rag.graph_text = "Prior graph fact"
+            rag.retrieved_context = [{"text": "Prior retrieved passage"}]
+            rag.graph_warning = "Prior graph warning"
+            rag.search_warnings = ["Prior search warning"]
+
+            rag.clear_conversation()
+
+            self.assertEqual(rag.chat_history, "No prior conversation")
+            self.assertEqual(rag.user_query, "")
+            self.assertEqual(rag.final_response, "")
+            self.assertEqual(rag.hybrid_text, "")
+            self.assertEqual(rag.graph_text, "")
+            self.assertEqual(rag.retrieved_context, [])
+            self.assertEqual(rag.graph_warning, "")
+            self.assertEqual(rag.search_warnings, [])
+            self.assertIs(rag.retriever, retriever)
+            self.assertEqual(path.read_text(), "existing log entry\n")
+
 
 if __name__ == "__main__":
     unittest.main()

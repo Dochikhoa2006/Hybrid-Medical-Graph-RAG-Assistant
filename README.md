@@ -185,6 +185,7 @@ Experimental source paths for query expansion, HyDE, chunk ordering, and extract
 - The system has no emergency escalation pathway, clinical validation, or regulatory approval.
 - The UI shows retrieved passages and graph relationships with each answer, but does not link individual claims to supporting passages.
 - Plaintext interaction logging is disabled by default. Set `ENABLE_CHAT_LOGGING=true` only for a controlled local demo; do not enter personal or protected health information.
+- The sidebar's “Clear This Session” action clears visible messages and in-memory conversation state; it does not erase an optional plaintext log.
 - Conversation state is per Streamlit session, but the retriever and optional log are shared, so the current implementation is intended for controlled local demonstration rather than multi-user deployment.
 - Most generated artifacts and the raw dataset are excluded from normal Git tracking; the FAISS index and Neo4j export are tracked exceptions.
 - Automated CI checks source syntax and repository structure; retrieval quality and medical correctness do not yet have benchmark tests.

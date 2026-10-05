@@ -84,6 +84,8 @@ Do not commit generated binaries merely to make the repository appear self-conta
 
 When `ENABLE_CHAT_LOGGING=true`, `Chat_History.log` contains raw questions, rewritten queries, retrieved context, responses, and LLM-generated telemetry. Logging is disabled by default. Health-related text may be sensitive even when names are omitted.
 
+The app's “Clear This Session” action clears only that session's in-memory chat. Existing log entries remain on disk until the operator removes or redacts them.
+
 - Do not enter personal or protected health information into the demonstration.
 - Do not attach the log to issues or commits.
 - Delete or redact local logs before screen sharing, archiving, or transferring the workspace.

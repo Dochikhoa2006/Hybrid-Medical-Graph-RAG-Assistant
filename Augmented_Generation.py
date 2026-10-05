@@ -393,6 +393,10 @@ class RAG:
         self.graph_warning = ""
         self.search_warnings = []
 
+    def clear_conversation (self):
+        self.chat_history = "No prior conversation"
+        self.reset_request_state ()
+
     def has_retrieved_evidence (self):
 
         def has_content (value):
