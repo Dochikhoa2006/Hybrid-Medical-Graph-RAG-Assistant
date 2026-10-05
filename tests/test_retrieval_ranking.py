@@ -212,6 +212,73 @@ class RetrievalRankingTests(unittest.TestCase):
         self.assertEqual(len(warnings), 1)
         self.assertIn("Reranking was unavailable", warnings[0])
 
+    def test_startup_keeps_keyword_path_when_semantic_and_reranker_fail(self):
+        passage = Doc("keyword passage", "SympScan")
+        keyword_index = types.SimpleNamespace(search=lambda *_args: [passage])
+        with (
+            patch.object(self.Retriever, "load_semantic_model", side_effect=FileNotFoundError("model missing")),
+            patch.object(self.module, "Vector_DB", side_effect=AssertionError("vector should not load")),
+            patch.object(self.module, "CrossEncoder", side_effect=RuntimeError("reranker unavailable")),
+            patch.object(self.module, "Knowledge_Graphbase", return_value=object()),
+            patch.object(self.module.joblib, "load", return_value=keyword_index, create=True),
+            patch("logging.getLogger"),
+        ):
+            retriever = self.Retriever(restore_graph_snapshot=False)
+
+        results, warnings = retriever.hybrid_retrieval(
+            ["query"], "query", True, True, True, True, return_warnings=True
+        )
+        self.assertEqual(results, [passage])
+        self.assertIsNone(retriever.vector_database)
+        self.assertIsNone(retriever.rerank_model)
+        self.assertEqual(len(warnings), 2)
+
+    def test_startup_without_passage_indexes_returns_no_results(self):
+        with (
+            patch.object(self.Retriever, "load_semantic_model", side_effect=FileNotFoundError("model missing")),
+            patch.object(self.module, "CrossEncoder", return_value=object()),
+            patch.object(self.module, "Knowledge_Graphbase", side_effect=RuntimeError("graph unavailable")),
+            patch.object(self.module.joblib, "load", side_effect=FileNotFoundError("index missing"), create=True),
+            patch("logging.getLogger"),
+        ):
+            retriever = self.Retriever(restore_graph_snapshot=False)
+
+        results, warnings = retriever.hybrid_retrieval(
+            ["query"], "query", True, True, True, True, return_warnings=True
+        )
+        self.assertEqual(results, [])
+        self.assertIsNone(retriever.knowledge_database)
+        self.assertEqual(len(warnings), 3)
+
+    def test_explicit_graph_restore_failure_still_stops_startup(self):
+        with (
+            patch.object(self.Retriever, "load_semantic_model", return_value=object()),
+            patch.object(self.module, "Vector_DB", return_value=object()),
+            patch.object(self.module, "CrossEncoder", return_value=object()),
+            patch.object(self.module, "Knowledge_Graphbase", side_effect=RuntimeError("restore unavailable")),
+            patch.object(self.module.joblib, "load", return_value=object(), create=True),
+        ):
+            with self.assertRaises(RuntimeError):
+                self.Retriever(restore_graph_snapshot=True)
+
+    def test_graph_context_survives_missing_reranker(self):
+        self.retriever.rerank_model = None
+        relationship = {
+            "entity1": "disease a", "entity1_type": "Disease",
+            "connection": "treated_with", "entity2": "drug b",
+            "entity2_type": "Medication",
+        }
+        self.retriever.knowledge_database = types.SimpleNamespace(
+            search=lambda _entities: [relationship]
+        )
+
+        graph_text = self.retriever.graph_retrieve(
+            [(["disease a"], [])], "question", True, True
+        )
+        self.assertIsInstance(graph_text, str)
+        self.assertIn("disease a", graph_text)
+        self.assertIn("drug b", graph_text)
+
 
 if __name__ == "__main__":
     unittest.main()

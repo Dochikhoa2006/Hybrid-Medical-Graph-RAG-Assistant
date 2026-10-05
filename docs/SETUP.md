@@ -4,7 +4,7 @@ This guide documents the current setup honestly: a fresh clone contains the sour
 
 ## Reproducibility status
 
-The application expects these files at fixed root-relative paths:
+Full retrieval behavior expects these files at fixed root-relative paths:
 
 ```text
 Semantic_Model.pkl
@@ -14,7 +14,7 @@ FAISS_Database/index.pkl
 neo4j.cypher
 ```
 
-`Semantic_Model.pkl`, `Keyword_Model.pkl`, and `FAISS_Database/index.pkl` are ignored by Git in the current repository. They must be generated locally or supplied through a trusted artifact channel before the application can start.
+`Semantic_Model.pkl`, `Keyword_Model.pkl`, and `FAISS_Database/index.pkl` are ignored by Git in the current repository. They must be generated locally or supplied through a trusted artifact channel for the corresponding retrieval paths to work. The app can start with a missing path, but it warns when that path is unavailable and abstains from a medical answer if no usable context remains.
 
 ## Prerequisites
 

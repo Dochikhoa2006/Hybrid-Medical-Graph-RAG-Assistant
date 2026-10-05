@@ -36,6 +36,8 @@ When graph lookup fails, the UI warns the user and can continue with retrieved p
 
 BM25, FAISS, and cross-encoder failures can also lead to a reduced retrieval path with a visible warning. Fallback ordering is not a substitute for relevance evaluation.
 
+The retriever can start when a search artifact, reranker, or graph connection fails to load. Medical queries still require retrieved context; a missing component can reduce coverage and cause abstention.
+
 ## Known implementation limitations
 
 - There is no emergency or red-flag classifier.

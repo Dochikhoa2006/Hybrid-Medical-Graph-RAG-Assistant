@@ -48,16 +48,43 @@ class Retriever:
 
     def __init__ (self, restore_graph_snapshot = None):
 
-        self.semantic_search_model = self.load_semantic_model ()
+        self.startup_warnings = []
+        self.semantic_search_model = None
+        self.vector_database = None
+        self.inverted_index = None
+        self.rerank_model = None
+        self.knowledge_database = None
 
-        self.rerank_model = CrossEncoder ("cross-encoder/ms-marco-MiniLM-L-6-v2")
-        self.inverted_index = joblib.load ("Keyword_Model.pkl")
-        self.vector_database = Vector_DB (self.semantic_search_model, "LOAD_DATABASE")
-        self.knowledge_database = Knowledge_Graphbase ()
+        try:
+            self.semantic_search_model = self.load_semantic_model ()
+            self.vector_database = Vector_DB (self.semantic_search_model, "LOAD_DATABASE")
+        except Exception as error:
+            self.startup_warnings.append ("Semantic search is unavailable; the FAISS path could not load.")
+            logging.getLogger (__name__).warning ("Semantic startup failed: %s", type (error).__name__)
+
+        try:
+            self.inverted_index = joblib.load ("Keyword_Model.pkl")
+        except Exception as error:
+            self.startup_warnings.append ("Keyword search is unavailable; the BM25 index could not load.")
+            logging.getLogger (__name__).warning ("Keyword startup failed: %s", type (error).__name__)
+
+        try:
+            self.rerank_model = CrossEncoder ("cross-encoder/ms-marco-MiniLM-L-6-v2")
+        except Exception as error:
+            self.startup_warnings.append ("Reranking is unavailable; results use retrieval order.")
+            logging.getLogger (__name__).warning ("Reranker startup failed: %s", type (error).__name__)
+
         if restore_graph_snapshot is None:
             restore_graph_snapshot = os.getenv ("RESTORE_GRAPH_SNAPSHOT", "false").lower () in ("1", "true", "yes", "on")
-        if restore_graph_snapshot:
-            self.knowledge_database.load_local ()
+        try:
+            self.knowledge_database = Knowledge_Graphbase ()
+            if restore_graph_snapshot:
+                self.knowledge_database.load_local ()
+        except Exception as error:
+            if restore_graph_snapshot:
+                raise
+            self.startup_warnings.append ("Graph search is unavailable; Neo4j could not initialize.")
+            logging.getLogger (__name__).warning ("Graph startup failed: %s", type (error).__name__)
 
     def merge_multi_query_retrieval (self, multi_query_retrieval, decay_rank = 60, keep_top_k_chunk = 10):
 
@@ -139,7 +166,14 @@ class Retriever:
 
     def hybrid_retrieval (self, user_query_processed_list, rewrite_query, do_keyword_search, do_semantic_search, do_RRF, do_cross_encoder, top_i_keyword_search = 64, top_j_semantic_search = 24, return_warnings = False):
 
-        warnings = []
+        warnings = getattr (self, "startup_warnings", []).copy ()
+
+        if do_keyword_search and self.inverted_index is None:
+            do_keyword_search = False
+        if do_semantic_search and self.vector_database is None:
+            do_semantic_search = False
+        if do_cross_encoder and self.rerank_model is None:
+            do_cross_encoder = False
 
         if not do_keyword_search and not do_semantic_search:
             return ([], warnings) if return_warnings else []
@@ -262,7 +296,7 @@ class Retriever:
         
         if len (multi_query_graph_chunks) > 10:
             multi_query_graph_chunks = multi_query_graph_chunks[ : 10]
-        if do_cross_encoder:
-            multi_query_graph_chunks = self.merge_multi_subgraph_cross_encoder (multi_query_graph_chunks, rewritten_query)
+        if do_cross_encoder and self.rerank_model is not None:
+            return self.merge_multi_subgraph_cross_encoder (multi_query_graph_chunks, rewritten_query)
 
-        return multi_query_graph_chunks
+        return "\n".join (multi_query_graph_chunks)

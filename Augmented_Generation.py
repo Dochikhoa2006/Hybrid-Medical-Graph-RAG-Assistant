@@ -65,13 +65,16 @@ class RAG:
             self.retrieved_context = self.describe_retrieved_chunks (displayed_chunks)
             self.hybrid_text = self.context_processer.context_retrieval_processing (top_k_chunks, self.rewritten_query, do_chunk_ordering, do_extractive_compression)
             if do_graph_search:
-                try:
-                    entities_list = self.context_processer.entity_extraction (understand, do_graph_search)
-                    self.graph_text = self.retriever.graph_retrieve (entities_list, self.rewritten_query, do_graph_search, do_cross_encoder)
-                except Exception as error:
-                    self.graph_text = ""
+                if getattr (self.retriever, "knowledge_database", True) is None:
                     self.graph_warning = "Graph lookup was unavailable; this response uses retrieved passages only."
-                    logging.getLogger (__name__).warning ("Graph lookup failed: %s", type (error).__name__)
+                else:
+                    try:
+                        entities_list = self.context_processer.entity_extraction (understand, do_graph_search)
+                        self.graph_text = self.retriever.graph_retrieve (entities_list, self.rewritten_query, do_graph_search, do_cross_encoder)
+                    except Exception as error:
+                        self.graph_text = ""
+                        self.graph_warning = "Graph lookup was unavailable; this response uses retrieved passages only."
+                        logging.getLogger (__name__).warning ("Graph lookup failed: %s", type (error).__name__)
             graph_text = self.graph_text if isinstance (self.graph_text, str) else "\n".join (self.graph_text or [])
             if graph_text.strip ():
                 self.retrieved_context.append ({

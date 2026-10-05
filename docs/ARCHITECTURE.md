@@ -162,7 +162,7 @@ When `ENABLE_CHAT_LOGGING=true`, the model produces two heuristic scores for log
 
 ## Startup behavior
 
-`Retriever` loads the serialized semantic and keyword objects, the FAISS store, the cross-encoder, and the Neo4j connection. Snapshot import is disabled by default. When `RESTORE_GRAPH_SNAPSHOT=true`, initialization checks for the snapshot and APOC Extended import procedure, then deletes all nodes and drops existing indexes and constraints before attempting to reload `neo4j.cypher`.
+`Retriever` attempts to load the serialized semantic and keyword objects, the FAISS store, the cross-encoder, and the Neo4j connection independently. Failed components produce visible warnings while available retrieval paths remain usable. Snapshot import is disabled by default. When `RESTORE_GRAPH_SNAPSHOT=true`, initialization checks for the snapshot and APOC Extended import procedure, then deletes all nodes and drops existing indexes and constraints before attempting to reload `neo4j.cypher`; a failed explicit restore still stops startup.
 
 Use a dedicated, disposable development database. Do not point the current implementation at a shared or production Neo4j database.
 
