@@ -141,12 +141,35 @@ class ConversationStateTests(unittest.TestCase):
             rag.response_format_check('{"chitchat": 2} {"chitchat": "Hello"}'),
             {"chitchat": "Hello"},
         )
+        self.assertEqual(rag.response_format_check(
+            '{"chitchat": "brief and redirect 2-5 sentences."}'
+        ), "")
         rag.intent = "RAG_SEARCH"
         self.assertEqual(rag.response_format_check('{"answer": "Only one field"}'), "")
         self.assertEqual(rag.response_format_check(
             '{"answer": " ", "disease": "Disease A", "medication": "Drug B", "advice": "Rest"}'
         ), "")
+        self.assertEqual(rag.response_format_check(
+            '{"answer": "concise 2-5 sentences", "disease": "Disease A", "medication": "", "advice": ""}'
+        ), "")
+        self.assertEqual(rag.response_format_check(
+            '{"answer": "A real answer", "disease": "Disease mentioned in the text", "medication": "", "advice": ""}'
+        ), "")
         self.assertEqual(rag.response_format_check(None), "")
+
+    def test_schema_placeholder_echo_triggers_repair(self):
+        rag = self.RAG(retriever=object())
+        rag.intent = "RAG_SEARCH"
+        rag.llm.invoke = Mock(side_effect=[
+            '{"answer": "concise 2-5 sentences", "disease": "Disease mentioned in the text", "medication": "", "advice": ""}',
+            '{"answer": "The passage describes Disease A.", "disease": "Disease A", "medication": "", "advice": ""}',
+        ])
+
+        _, answer, status = rag.Generation("BASE PROMPT", format_fail=2)
+        self.assertEqual(status, "success")
+        self.assertEqual(rag.llm.invoke.call_count, 2)
+        self.assertIn("The passage describes Disease A", answer)
+        self.assertIn("Do not copy placeholder text", rag.llm.invoke.call_args_list[1].args[0])
 
     def test_blank_primary_answer_is_repaired_before_rendering_medical_fields(self):
         rag = self.RAG(retriever=object())

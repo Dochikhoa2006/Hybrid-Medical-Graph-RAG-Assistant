@@ -11,6 +11,15 @@ import logging
 import math
 
 
+SCHEMA_PLACEHOLDERS = {
+    "answer": "concise 2-5 sentences",
+    "disease": "disease mentioned in the text",
+    "medication": "comma-separated of drugs mentioned",
+    "advice": "comma-separated list of precautions, dietary needs, exercises mentioned",
+    "chitchat": "brief and redirect 2-5 sentences",
+}
+
+
 class RAG:
 
     def __init__ (self, model = None, base_url = None, log_file_path = "Chat_History.log", retriever = None, log_interactions = None):
@@ -181,7 +190,8 @@ class RAG:
         previous_output = json.dumps (str (fail_response)[:1200], ensure_ascii = False)
         return (f"\n### JSON REPAIR ATTEMPT {fail_times}\n"
                 "Return exactly one valid JSON object with string values and no surrounding text. "
-                f"Required keys: {', '.join (keys)}. The {primary_key} value must not be blank.\n"
+                f"Required keys: {', '.join (keys)}. The {primary_key} value must not be blank. "
+                "Do not copy placeholder text from the schema.\n"
                 f"Previous invalid output (truncated to 1200 characters): {previous_output}\n")
 
     def Generation (self, prompt, format_fail = 3):
@@ -218,9 +228,6 @@ class RAG:
             disease = self.process_valid_response (disease)
             medication = self.process_valid_response (medication)
             advice = self.process_valid_response (advice)
-
-            if answer == "Concise 2-5 sentences:":
-                answer = "Please rely on other supporting detail."
 
             response = ( f"### 🩺 Medical Assessment\n"
                         f"{answer}\n\n"
@@ -280,7 +287,10 @@ class RAG:
                 continue
             if isinstance (candidate, dict) and all (
                 isinstance (candidate.get (key), str) for key in required_keys
-            ) and candidate[primary_key].strip ():
+            ) and candidate[primary_key].strip () and all (
+                candidate[key].strip ().lower ().rstrip (" .:") != SCHEMA_PLACEHOLDERS[key]
+                for key in required_keys
+            ):
                 return candidate
 
         return ""
