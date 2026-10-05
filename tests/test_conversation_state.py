@@ -135,7 +135,24 @@ class ConversationStateTests(unittest.TestCase):
         )
         rag.intent = "RAG_SEARCH"
         self.assertEqual(rag.response_format_check('{"answer": "Only one field"}'), "")
+        self.assertEqual(rag.response_format_check(
+            '{"answer": " ", "disease": "Disease A", "medication": "Drug B", "advice": "Rest"}'
+        ), "")
         self.assertEqual(rag.response_format_check(None), "")
+
+    def test_blank_primary_answer_is_repaired_before_rendering_medical_fields(self):
+        rag = self.RAG(retriever=object())
+        rag.intent = "RAG_SEARCH"
+        rag.llm.invoke = Mock(side_effect=[
+            '{"answer": "", "disease": "Disease A", "medication": "Drug B", "advice": "Rest"}',
+            '{"answer": "The passage describes Disease A.", "disease": "Disease A", "medication": "", "advice": ""}',
+        ])
+
+        _, answer, status = rag.Generation("BASE PROMPT", format_fail=2)
+        self.assertEqual(status, "success")
+        self.assertEqual(rag.llm.invoke.call_count, 2)
+        self.assertIn("The passage describes Disease A", answer)
+        self.assertIn("answer value must not be blank", rag.llm.invoke.call_args_list[1].args[0])
 
     def test_new_request_clears_previous_retrieval_context(self):
         rag = self.RAG(retriever=object())

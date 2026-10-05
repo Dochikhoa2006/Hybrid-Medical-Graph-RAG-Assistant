@@ -172,10 +172,11 @@ class RAG:
     def Prompt_Fixed_after_Fail_Format_Check (self, fail_response, fail_times):
 
         keys = ("answer", "disease", "medication", "advice") if self.intent == "RAG_SEARCH" else ("chitchat",)
+        primary_key = "answer" if self.intent == "RAG_SEARCH" else "chitchat"
         previous_output = json.dumps (str (fail_response)[:1200], ensure_ascii = False)
         return (f"\n### JSON REPAIR ATTEMPT {fail_times}\n"
                 "Return exactly one valid JSON object with string values and no surrounding text. "
-                f"Required keys: {', '.join (keys)}.\n"
+                f"Required keys: {', '.join (keys)}. The {primary_key} value must not be blank.\n"
                 f"Previous invalid output (truncated to 1200 characters): {previous_output}\n")
 
     def Generation (self, prompt, format_fail = 3):
@@ -262,6 +263,7 @@ class RAG:
     def response_format_check (self, response):
 
         required_keys = ("answer", "disease", "medication", "advice") if self.intent == "RAG_SEARCH" else ("chitchat",)
+        primary_key = "answer" if self.intent == "RAG_SEARCH" else "chitchat"
         if not isinstance (response, str):
             return ""
 
@@ -273,7 +275,7 @@ class RAG:
                 continue
             if isinstance (candidate, dict) and all (
                 isinstance (candidate.get (key), str) for key in required_keys
-            ):
+            ) and candidate[primary_key].strip ():
                 return candidate
 
         return ""
