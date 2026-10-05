@@ -90,6 +90,12 @@ if prompt := st.chat_input ("Ask me anything..."):
                 st.warning ("The answer was shown, but conversation follow-up processing failed.")
 
 with st.sidebar:
+    startup_warnings = getattr (rag.retriever, "startup_warnings", [])
+    if startup_warnings:
+        st.header ("Retrieval status")
+        for warning in startup_warnings:
+            st.warning (warning)
+
     st.header ("Settings")
 
     if st.button ("Clear This Session"):

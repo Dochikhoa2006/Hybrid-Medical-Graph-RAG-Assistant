@@ -163,7 +163,7 @@ The current default request path enables:
 - Exact-name Neo4j lookup and graph-context reranking.
 - A visible warning and passage-only answer path when graph lookup fails but passage retrieval succeeds.
 - Search can continue from BM25 or FAISS when the other path fails; reranking failures fall back to retrieval order with a visible warning.
-- The retriever can start with a missing search artifact or reranker and shows a warning when that path is unavailable.
+- The retriever can start with a missing search artifact or reranker; the sidebar shows component load warnings immediately.
 - An abstention response for medical queries when retrieval returns no usable text.
 - JSON parsing across at most three generation attempts total: the initial response plus up to two format-repair retries.
 - Each retry starts from the original prompt and includes at most 1,200 characters of the latest malformed output.
