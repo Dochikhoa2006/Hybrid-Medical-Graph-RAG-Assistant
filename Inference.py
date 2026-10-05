@@ -1,8 +1,7 @@
-from Hybrid_Dual_Indexing import Keyword_Search, Semantic_Search
 from Augmented_Generation import RAG
 from Retrieval import Retriever
 import streamlit as st
-import time
+import logging
 
 
 st.set_page_config (page_title = "Healthcare Chatbot", page_icon = "🤖")
@@ -15,7 +14,7 @@ if "rag" not in st.session_state:
     placeholder = st.empty ()
 
     with placeholder.container ():
-        st.warning ("⚠️ **THIS MEDICAL RAG SYSTEM SHOULD TAKE 60s TO LOAD ! APOLOGIZE FOR THE SLOW.**")
+        st.info ("Loading retrieval models. The first start can take about a minute.")
         rag = RAG (retriever = load_retriever ())
         
     placeholder.empty ()
@@ -64,21 +63,14 @@ if prompt := st.chat_input ("Ask me anything..."):
     st.session_state.messages.append ({"role": "user", "content": prompt})
 
     with st.chat_message ("assistant"):
-        with st.status ("Analyzing...", expanded = False) as status:
-            time.sleep (1.0)
-            
-            status.update (label = "Retrieving...", state = "running")
-            time.sleep (1.0) 
-            
-            status.update (label = "Feedback loop...", state = "running")
-            
+        with st.status ("Preparing response...", expanded = False) as status:
             try:
                 response = rag.RAG_Online_Phase (prompt)
-                status.update (label = "Analysis Complete", state = "complete")
-                
-            except Exception as e:
-                status.update (label = "Error Occurred", state = "error")
-                st.error (f"An error occurred: {e}")
+                status.update (label = "Response ready", state = "complete")
+            except Exception as error:
+                logging.getLogger (__name__).warning ("Request failed: %s", type (error).__name__)
+                status.update (label = "Request failed", state = "error")
+                st.error ("The request could not be completed. Please try again.")
                 response = None
 
         if response:
