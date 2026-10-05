@@ -5,7 +5,6 @@ from langchain_ollama import OllamaLLM
 from runtime_config import ollama_settings
 import json
 import ast
-import re
 import os
 import logging
 import math
@@ -287,10 +286,37 @@ class RAG:
                 result[key] = value
             return result
 
+        def complete_objects (text):
+            start = None
+            depth = 0
+            in_string = False
+            escaped = False
+            for index, char in enumerate (text):
+                if depth == 0:
+                    if char == "{":
+                        start = index
+                        depth = 1
+                elif in_string:
+                    if escaped:
+                        escaped = False
+                    elif char == "\\":
+                        escaped = True
+                    elif char == '"':
+                        in_string = False
+                elif char == '"':
+                    in_string = True
+                elif char == "{":
+                    depth += 1
+                elif char == "}":
+                    depth -= 1
+                    if depth == 0:
+                        yield text[start:index + 1]
+                        start = None
+
         decoder = json.JSONDecoder (object_pairs_hook = unique_object)
-        for match in re.finditer (r'\{', response):
+        for object_text in complete_objects (response):
             try:
-                candidate, _ = decoder.raw_decode (response, match.start ())
+                candidate = decoder.decode (object_text)
             except (json.JSONDecodeError, ValueError):
                 continue
             if isinstance (candidate, dict) and all (

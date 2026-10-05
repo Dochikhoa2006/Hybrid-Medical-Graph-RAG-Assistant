@@ -141,6 +141,21 @@ class ConversationStateTests(unittest.TestCase):
             rag.response_format_check('{"chitchat": 2} {"chitchat": "Hello"}'),
             {"chitchat": "Hello"},
         )
+        self.assertEqual(
+            rag.response_format_check('{"outer": {"chitchat": "Nested answer"}, invalid}'),
+            "",
+        )
+        self.assertEqual(
+            rag.response_format_check(
+                '{"outer": {"chitchat": "Nested answer"}, invalid} '
+                '{"chitchat": "Real answer"}'
+            ),
+            {"chitchat": "Real answer"},
+        )
+        self.assertEqual(
+            rag.response_format_check('{"chitchat": "Hello \\"{name}\\""}'),
+            {"chitchat": 'Hello "{name}"'},
+        )
         self.assertEqual(rag.response_format_check(
             '{"chitchat": "brief and redirect 2-5 sentences."}'
         ), "")
