@@ -84,12 +84,20 @@ class ConversationStateTests(unittest.TestCase):
         self.assertEqual(rag.llm.prompts, [])
 
     def test_ollama_endpoint_reaches_generation_and_query_processing(self):
-        with patch.dict(os.environ, {"OLLAMA_BASE_URL": "http://example.local:11434"}):
+        with patch.dict(os.environ, {
+            "OLLAMA_BASE_URL": "http://example.local:11434",
+            "OLLAMA_MODEL": "custom-answer-model",
+        }):
             rag = self.RAG(retriever=object())
+        self.assertEqual(rag.model_name, "custom-answer-model")
+        self.assertEqual(rag.llm.options["model"], "custom-answer-model")
+        self.assertEqual(rag.context_processer.options["model"], "custom-answer-model")
         self.assertEqual(rag.llm.options["base_url"], "http://example.local:11434")
         self.assertEqual(rag.context_processer.options["base_url"], "http://example.local:11434")
 
-        explicit = self.RAG(retriever=object(), base_url="http://override.local:11434")
+        explicit = self.RAG(retriever=object(), model="explicit-model", base_url="http://override.local:11434")
+        self.assertEqual(explicit.model_name, "explicit-model")
+        self.assertEqual(explicit.context_processer.options["model"], "explicit-model")
         self.assertEqual(explicit.llm.options["base_url"], "http://override.local:11434")
         self.assertEqual(explicit.context_processer.options["base_url"], "http://override.local:11434")
 

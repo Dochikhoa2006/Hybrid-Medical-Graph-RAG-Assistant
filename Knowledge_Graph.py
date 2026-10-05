@@ -1,6 +1,7 @@
 from neo4j import GraphDatabase
 from pyspark.sql import SparkSession
 from dotenv import load_dotenv
+from runtime_config import neo4j_uri
 import joblib
 import os
 import re
@@ -12,7 +13,7 @@ class Knowledge_Graphbase:
 
         load_dotenv ()
         password = os.getenv ("AUTH")
-        connection_URI = connection_URI or os.getenv ("NEO4J_URI") or "bolt://my-neo4j:7687"
+        connection_URI = neo4j_uri (connection_URI)
         self.driver = GraphDatabase.driver (connection_URI, auth = (user, password))
 
     def knowledge_graph_workflow_1 (self, writer, disease_name, medication, precaution):

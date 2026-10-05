@@ -27,14 +27,20 @@ class RuntimeConfigurationTests(unittest.TestCase):
         ollama.OllamaLLM = lambda **kwargs: calls.append(kwargs)
         with patch.dict(sys.modules, {"langchain_ollama": ollama}):
             processor = load_module("query_config_test", "PreRetrival_and_PostRetrieval.py")
-            with patch.dict(os.environ, {"OLLAMA_BASE_URL": "http://ollama.local:11434"}):
+            with patch.dict(os.environ, {
+                "OLLAMA_BASE_URL": "http://ollama.local:11434",
+                "OLLAMA_MODEL": "env-model",
+            }):
                 processor.Context_Processer()
-            processor.Context_Processer(base_url="http://explicit.local:11434")
-            with patch.dict(os.environ, {"OLLAMA_BASE_URL": ""}):
+            processor.Context_Processer(model="explicit-model", base_url="http://explicit.local:11434")
+            with patch.dict(os.environ, {"OLLAMA_BASE_URL": "", "OLLAMA_MODEL": ""}):
                 processor.Context_Processer()
         self.assertEqual(calls[0]["base_url"], "http://ollama.local:11434")
+        self.assertEqual(calls[0]["model"], "env-model")
         self.assertEqual(calls[1]["base_url"], "http://explicit.local:11434")
+        self.assertEqual(calls[1]["model"], "explicit-model")
         self.assertEqual(calls[2]["base_url"], "http://host.docker.internal:11434")
+        self.assertEqual(calls[2]["model"], "qwen2.5:0.5b-instruct-q5_k_m")
 
     def test_graph_uses_configured_neo4j_endpoint(self):
         calls = []

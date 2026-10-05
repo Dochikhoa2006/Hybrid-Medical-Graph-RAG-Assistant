@@ -125,6 +125,8 @@ Follow [Setup and reproducibility](docs/SETUP.md) to rebuild the ignored artifac
 ollama pull qwen2.5:0.5b-instruct-q5_k_m
 ```
 
+To use another locally installed model, set `OLLAMA_MODEL` in the environment before starting Compose. The same model is used for query processing, generation, and chat summarization.
+
 ### 4. Start the services
 
 > [!WARNING]

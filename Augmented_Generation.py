@@ -2,6 +2,7 @@ from Hybrid_Dual_Indexing import Keyword_Search, Semantic_Search
 from PreRetrival_and_PostRetrieval import Context_Processer
 from Retrieval import Retriever
 from langchain_ollama import OllamaLLM
+from runtime_config import ollama_settings
 import json
 import ast
 import re
@@ -12,7 +13,7 @@ import math
 
 class RAG:
 
-    def __init__ (self, model = "qwen2.5:0.5b-instruct-q5_k_m", base_url = None, log_file_path = "Chat_History.log", retriever = None, log_interactions = None):
+    def __init__ (self, model = None, base_url = None, log_file_path = "Chat_History.log", retriever = None, log_interactions = None):
 
         self.log_file_path = log_file_path
         self.log_interactions = (log_interactions if log_interactions is not None else
@@ -20,7 +21,8 @@ class RAG:
         self.chat_history = "No prior conversation"
         self.reset_request_state ()
 
-        base_url = base_url or os.getenv ("OLLAMA_BASE_URL") or "http://host.docker.internal:11434"
+        model, base_url = ollama_settings (model, base_url)
+        self.model_name = model
         self.llm = OllamaLLM (model = model, base_url = base_url)
         self.retriever = retriever if retriever is not None else Retriever ()
         self.context_processer = Context_Processer (model = model, base_url = base_url)

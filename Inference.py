@@ -90,6 +90,7 @@ if prompt := st.chat_input ("Ask me anything..."):
                 st.warning ("The answer was shown, but conversation follow-up processing failed.")
 
 with st.sidebar:
+    st.caption (f"Ollama model: {rag.model_name}")
     startup_warnings = getattr (rag.retriever, "startup_warnings", [])
     if startup_warnings:
         st.header ("Retrieval status")

@@ -140,6 +140,8 @@ Start Ollama on the host, then pull the exact model referenced by the tracked ap
 ollama pull qwen2.5:0.5b-instruct-q5_k_m
 ```
 
+Set `OLLAMA_MODEL` to another pulled model name to use it for both query processing and answer generation. The default is `qwen2.5:0.5b-instruct-q5_k_m`.
+
 The application container reaches Ollama at `http://host.docker.internal:11434`. Docker Desktop supplies this hostname on macOS and Windows. Additional host-gateway configuration may be required on Linux.
 
 ## Start the application
@@ -162,7 +164,7 @@ Do not use this setting against a database containing data you need to keep. Lea
 
 The application may download the cross-encoder during the first startup if it is not cached. The `all-MiniLM-L6-v2` embedding model is acquired during artifact construction and subsequently loaded through `Semantic_Model.pkl`. Initial loading can take about one minute or longer depending on the host and cache state.
 
-The application reads `NEO4J_URI` and `OLLAMA_BASE_URL` from the environment. If unset, it uses `bolt://my-neo4j:7687` and `http://host.docker.internal:11434`, respectively. Constructor arguments can override either endpoint when using the Python classes directly.
+The application reads `NEO4J_URI`, `OLLAMA_BASE_URL`, and `OLLAMA_MODEL` from the environment. If unset, it uses `bolt://my-neo4j:7687`, `http://host.docker.internal:11434`, and `qwen2.5:0.5b-instruct-q5_k_m`, respectively. Constructor arguments can override these settings when using the Python classes directly.
 
 ## Verification checklist
 

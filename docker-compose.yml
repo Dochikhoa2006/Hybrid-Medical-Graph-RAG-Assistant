@@ -28,6 +28,7 @@ services:
         - AUTH=MedicalKnowledgeGraph
         - NEO4J_URI=bolt://my-neo4j:7687
         - OLLAMA_BASE_URL=http://host.docker.internal:11434
+        - OLLAMA_MODEL=${OLLAMA_MODEL:-qwen2.5:0.5b-instruct-q5_k_m}
         - RESTORE_GRAPH_SNAPSHOT=${RESTORE_GRAPH_SNAPSHOT:-false}
         command: streamlit run Inference.py
         depends_on:
