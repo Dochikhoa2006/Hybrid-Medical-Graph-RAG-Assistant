@@ -191,7 +191,7 @@ class RAG:
         return (f"\n### JSON REPAIR ATTEMPT {fail_times}\n"
                 "Return exactly one valid JSON object with string values and no surrounding text. "
                 f"Required keys: {', '.join (keys)}. The {primary_key} value must not be blank. "
-                "Do not copy placeholder text from the schema.\n"
+                "Do not repeat keys or copy placeholder text from the schema.\n"
                 f"Previous invalid output (truncated to 1200 characters): {previous_output}\n")
 
     def Generation (self, prompt, format_fail = 3):
@@ -279,11 +279,19 @@ class RAG:
         if not isinstance (response, str):
             return ""
 
-        decoder = json.JSONDecoder ()
+        def unique_object (pairs):
+            result = {}
+            for key, value in pairs:
+                if key in result:
+                    raise ValueError ("Duplicate JSON key")
+                result[key] = value
+            return result
+
+        decoder = json.JSONDecoder (object_pairs_hook = unique_object)
         for match in re.finditer (r'\{', response):
             try:
                 candidate, _ = decoder.raw_decode (response, match.start ())
-            except json.JSONDecodeError:
+            except (json.JSONDecodeError, ValueError):
                 continue
             if isinstance (candidate, dict) and all (
                 isinstance (candidate.get (key), str) for key in required_keys

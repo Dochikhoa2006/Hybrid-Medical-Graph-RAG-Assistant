@@ -144,6 +144,9 @@ class ConversationStateTests(unittest.TestCase):
         self.assertEqual(rag.response_format_check(
             '{"chitchat": "brief and redirect 2-5 sentences."}'
         ), "")
+        self.assertEqual(rag.response_format_check(
+            '{"chitchat": "First", "chitchat": "Second"}'
+        ), "")
         rag.intent = "RAG_SEARCH"
         self.assertEqual(rag.response_format_check('{"answer": "Only one field"}'), "")
         self.assertEqual(rag.response_format_check(
@@ -155,7 +158,24 @@ class ConversationStateTests(unittest.TestCase):
         self.assertEqual(rag.response_format_check(
             '{"answer": "A real answer", "disease": "Disease mentioned in the text", "medication": "", "advice": ""}'
         ), "")
+        self.assertEqual(rag.response_format_check(
+            '{"answer": "First", "answer": "Second", "disease": "", "medication": "", "advice": ""}'
+        ), "")
         self.assertEqual(rag.response_format_check(None), "")
+
+    def test_duplicate_json_key_triggers_repair(self):
+        rag = self.RAG(retriever=object())
+        rag.intent = "CHITCHAT"
+        rag.llm.invoke = Mock(side_effect=[
+            '{"chitchat": "First", "chitchat": "Second"}',
+            '{"chitchat": "Hello"}',
+        ])
+
+        _, answer, status = rag.Generation("BASE PROMPT", format_fail=2)
+        self.assertEqual(status, "success")
+        self.assertEqual(rag.llm.invoke.call_count, 2)
+        self.assertIn("Hello", answer)
+        self.assertIn("Do not repeat keys", rag.llm.invoke.call_args_list[1].args[0])
 
     def test_schema_placeholder_echo_triggers_repair(self):
         rag = self.RAG(retriever=object())
@@ -169,7 +189,7 @@ class ConversationStateTests(unittest.TestCase):
         self.assertEqual(status, "success")
         self.assertEqual(rag.llm.invoke.call_count, 2)
         self.assertIn("The passage describes Disease A", answer)
-        self.assertIn("Do not copy placeholder text", rag.llm.invoke.call_args_list[1].args[0])
+        self.assertIn("copy placeholder text", rag.llm.invoke.call_args_list[1].args[0])
 
     def test_blank_primary_answer_is_repaired_before_rendering_medical_fields(self):
         rag = self.RAG(retriever=object())
@@ -407,8 +427,8 @@ class ConversationStateTests(unittest.TestCase):
         prompts = [call.args[0] for call in rag.llm.invoke.call_args_list]
         self.assertEqual(len(prompts), 3)
         self.assertEqual(prompts[0], "BASE PROMPT")
-        self.assertLess(len(prompts[1]), 1500)
-        self.assertLess(len(prompts[2]), 1500)
+        self.assertLess(len(prompts[1]), 1600)
+        self.assertLess(len(prompts[2]), 1600)
         self.assertIn("B" * 100, prompts[2])
         self.assertNotIn("A" * 100, prompts[2])
 
