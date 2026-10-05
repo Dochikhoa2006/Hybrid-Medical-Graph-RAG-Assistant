@@ -7,6 +7,7 @@ import ast
 import re
 import os
 import logging
+import math
 
 
 class RAG:
@@ -296,17 +297,24 @@ class RAG:
             ### Output Format: Return ONLY a single floating-point number between 0.0 and 1.0 
         """
 
-        score = self.llm.invoke (prompt)
-        score_match = re.search(r"[-+]?\d*\.\d+|\d+", score.strip ())
-
-        if not score_match:
-            return 0.0, False
-
-        score = float (score_match.group ())
+        score = self.parse_unit_score (self.llm.invoke (prompt))
+        if score is None:
+            return None, False
         if score < relevance_threshold:
             return score, False
         
         return score, True
+
+    @staticmethod
+    def parse_unit_score (value):
+
+        try:
+            score = float (value.strip () if isinstance (value, str) else value)
+        except (TypeError, ValueError):
+            return None
+        if not math.isfinite (score) or not 0.0 <= score <= 1.0:
+            return None
+        return score
     
     def how_retrieval_helpful (self):
 
@@ -338,14 +346,7 @@ class RAG:
             - 0.0: Irrelevant; documents do not help answer the query at all.
         """
     
-        score = self.llm.invoke (prompt)
-        score_match = re.search(r"[-+]?\d*\.\d+|\d+", score.strip ())
-
-        if not score_match:
-            return 0.0
-
-        score = float (score_match.group ())
-        return score
+        return self.parse_unit_score (self.llm.invoke (prompt))
     
     def Logging (self):
 
@@ -366,8 +367,8 @@ class RAG:
                     "SEARCH WARNINGS": self.search_warnings,
                     "FIRST RESPONSE": self.first_response,
                     "FINAL RESPONSE": self.final_response,
-                    "RESPONSE CONFIDENCE (0-1)": response_score,
-                    "RETRIEVAL CONFIDENCE (0-1)": retrieval_score,
+                    "RESPONSE HEURISTIC SCORE (0-1)": response_score,
+                    "RETRIEVAL HEURISTIC SCORE (0-1)": retrieval_score,
                     "STATUS": self.status
                     }
         each_line = json.dumps (each_line)

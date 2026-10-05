@@ -158,7 +158,7 @@ If graph entity extraction or Neo4j lookup fails after passage retrieval, the gr
 
 BM25 and FAISS searches fail independently. Successful results from either path can continue through ranking; if cross-encoder reranking fails, the retriever interleaves unique candidates in retrieval order. The UI attaches warnings to the response for failed search or ranking stages. If no usable graph or passage context remains, generation is skipped.
 
-When `ENABLE_CHAT_LOGGING=true`, the model produces two heuristic scores for logging after a response: response quality and retrieval helpfulness. They are uncalibrated LLM self-assessments rather than probabilities, clinical confidence, or benchmark metrics.
+When `ENABLE_CHAT_LOGGING=true`, the model produces two heuristic scores for logging after a response: response quality and retrieval helpfulness. Only a single finite value from 0 to 1 is recorded; malformed or out-of-range output is stored as `null`. These are uncalibrated LLM self-assessments rather than probabilities, clinical confidence, or benchmark metrics.
 
 ## Startup behavior
 

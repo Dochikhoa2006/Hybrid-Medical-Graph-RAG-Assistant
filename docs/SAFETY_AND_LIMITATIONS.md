@@ -46,7 +46,7 @@ BM25, FAISS, and cross-encoder failures can also lead to a reduced retrieval pat
 - The embedding and reranking models are general-purpose rather than clinically validated for this dataset.
 - The generation model is a small local Qwen 2.5 variant.
 - JSON checking verifies parseability but not a complete schema or factual content.
-- Response and retrieval scores are uncalibrated LLM self-assessments.
+- Response and retrieval heuristic scores are uncalibrated LLM self-assessments; invalid score output is logged as `null` when logging is enabled.
 - Query expansion, HyDE, chunk ordering, and extractive compression are inactive by default.
 - Dependencies and the Neo4j image are not fully version-pinned.
 - There are no automated retrieval-quality or medical-correctness tests.

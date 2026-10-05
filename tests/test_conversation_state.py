@@ -223,9 +223,25 @@ class ConversationStateTests(unittest.TestCase):
             rag.final_response = "No supporting information found"
             rag.Logging()
             record = json.loads(path.read_text().strip())
-            self.assertIsNone(record["RESPONSE CONFIDENCE (0-1)"])
-            self.assertIsNone(record["RETRIEVAL CONFIDENCE (0-1)"])
+            self.assertIsNone(record["RESPONSE HEURISTIC SCORE (0-1)"])
+            self.assertIsNone(record["RETRIEVAL HEURISTIC SCORE (0-1)"])
             self.assertEqual(rag.llm.prompts, [])
+
+    def test_telemetry_scores_require_one_finite_unit_value(self):
+        rag = self.RAG(retriever=object())
+        self.assertEqual(rag.parse_unit_score("0.75"), 0.75)
+        self.assertEqual(rag.parse_unit_score(" 1.0 "), 1.0)
+        for invalid in ("5/10", "Score: 0.7", "1.2", "-0.1", "nan", "inf", ""):
+            with self.subTest(value=invalid):
+                self.assertIsNone(rag.parse_unit_score(invalid))
+
+        rag.llm.invoke = Mock(return_value="5/10")
+        self.assertEqual(rag.response_content_check("answer", "question"), (None, False))
+        rag.hybrid_text = "Retrieved passage"
+        self.assertIsNone(rag.how_retrieval_helpful())
+
+        rag.llm.invoke = Mock(return_value="0.6")
+        self.assertEqual(rag.response_content_check("answer", "question", relevance_threshold=0.7), (0.6, False))
 
     def test_retrieved_context_keeps_distinct_sources_and_graph(self):
         rag = self.RAG(retriever=object())
