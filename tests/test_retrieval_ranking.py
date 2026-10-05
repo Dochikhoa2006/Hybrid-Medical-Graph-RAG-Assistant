@@ -212,6 +212,28 @@ class RetrievalRankingTests(unittest.TestCase):
         self.assertEqual(len(warnings), 1)
         self.assertIn("Reranking was unavailable", warnings[0])
 
+    def test_fallback_limits_combined_results_to_five(self):
+        keyword = [Doc(f"keyword {index}", "SympScan") for index in range(4)]
+        semantic = [Doc(f"semantic {index}", "SympScan") for index in range(4)]
+        self.retriever.inverted_index = types.SimpleNamespace(search=lambda *_args: keyword)
+        self.retriever.vector_database = types.SimpleNamespace(search=lambda *_args: semantic)
+
+        expected = [keyword[0], semantic[0], keyword[1], semantic[1], keyword[2]]
+        results = self.retriever.hybrid_retrieval(
+            ["query"], "query", True, True, False, False
+        )
+        self.assertEqual(results, expected)
+
+        self.retriever.rerank_model = types.SimpleNamespace(
+            predict=lambda *_args: (_ for _ in ()).throw(RuntimeError("ranker unavailable"))
+        )
+        with patch("logging.getLogger"):
+            results, warnings = self.retriever.hybrid_retrieval(
+                ["query"], "query", True, True, False, True, return_warnings=True
+            )
+        self.assertEqual(results, expected)
+        self.assertIn("Reranking was unavailable", warnings[0])
+
     def test_startup_keeps_keyword_path_when_semantic_and_reranker_fail(self):
         passage = Doc("keyword passage", "SympScan")
         keyword_index = types.SimpleNamespace(search=lambda *_args: [passage])

@@ -220,6 +220,7 @@ class Retriever:
         else:
             final_top_k_chunks = self.interleave_unique (final_keyword_chunks, final_semantic_chunks)
 
+        final_top_k_chunks = final_top_k_chunks[:5]
         return (final_top_k_chunks, warnings) if return_warnings else final_top_k_chunks
         
     def linearize_entity_relationship (self, array_of_relationship, max_relationship = 3):
