@@ -71,9 +71,16 @@ class RAG:
                 understand, self.rewritten_query, do_keyword_search, do_semantic_search,
                 do_RRF, do_cross_encoder, return_warnings = True
             )
-            displayed_chunks = top_k_chunks if do_chunk_ordering else top_k_chunks[:5]
-            self.retrieved_context = self.describe_retrieved_chunks (displayed_chunks)
-            self.hybrid_text = self.context_processer.context_retrieval_processing (top_k_chunks, self.rewritten_query, do_chunk_ordering, do_extractive_compression)
+            context_result = self.context_processer.context_retrieval_processing (
+                top_k_chunks, self.rewritten_query, do_chunk_ordering, do_extractive_compression,
+                return_used_chunks = True,
+            )
+            if isinstance (context_result, tuple):
+                self.hybrid_text, used_chunks = context_result
+            else:
+                self.hybrid_text = context_result
+                used_chunks = top_k_chunks if do_chunk_ordering else top_k_chunks[:5]
+            self.retrieved_context = self.describe_retrieved_chunks (used_chunks)
             if do_graph_search:
                 if getattr (self.retriever, "knowledge_database", True) is None:
                     self.graph_warning = "Graph lookup was unavailable; this response uses retrieved passages only."

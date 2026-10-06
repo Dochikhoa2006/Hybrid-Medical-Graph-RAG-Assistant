@@ -43,6 +43,19 @@ class ContextCompressionTests(unittest.TestCase):
         for chunk, call in zip(chunks, processor.llm.invoke.call_args_list):
             self.assertIn(f"DOCUMENT CHUNK: {chunk.page_content}", call.args[0])
 
+    def test_compression_reports_only_passages_used_in_prompt(self):
+        processor = self.ContextProcesser.__new__(self.ContextProcesser)
+        processor.llm = Mock()
+        processor.llm.invoke.side_effect = ["Relevant finding", "NOT_RELEVANT", "Other finding"]
+        chunks = [types.SimpleNamespace(page_content=text) for text in ("first", "second", "third")]
+
+        context, used_chunks = processor.context_retrieval_processing(
+            chunks, "query", False, True, return_used_chunks=True
+        )
+
+        self.assertEqual(context, "- Relevant finding.\n- Other finding.")
+        self.assertEqual(used_chunks, [chunks[0], chunks[2]])
+
     def test_all_irrelevant_passages_leave_no_compressed_evidence(self):
         processor = self.ContextProcesser.__new__(self.ContextProcesser)
         processor.llm = Mock()

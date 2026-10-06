@@ -156,7 +156,7 @@ The Streamlit UI stores a copy of the retrieved passages and graph relationships
 
 For medical queries, the generation step is skipped when both retrieval paths return no usable text. The application returns an abstention message instead. This is a presence check, not a relevance or clinical-safety check.
 
-When optional extractive compression is enabled, each retrieved passage is summarized separately. Passages marked `NOT_RELEVANT` are omitted from the prompt context; if all compressed passages are omitted and no graph text remains, the request takes the abstention path.
+When optional extractive compression is enabled, each retrieved passage is summarized separately. Passages marked `NOT_RELEVANT` are omitted from both the prompt context and the UI's used-context list; if all compressed passages are omitted and no graph text remains, the request takes the abstention path.
 
 If graph entity extraction or Neo4j lookup fails after passage retrieval, the graph context is cleared and the UI shows a warning with that response. Generation can continue from retrieved passages. If no passage text is available, the request takes the abstention path.
 If graph reranking fails after lookup or its model is unavailable, the retriever uses up to five unique relationships in retrieval order and attaches a warning to that response. Ranked relationships are also separated by newlines in the generation context.

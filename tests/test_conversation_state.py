@@ -375,7 +375,7 @@ class ConversationStateTests(unittest.TestCase):
             page_content="Same passage", metadata={"source": "Other source", "disease_name": "Disease B"}
         )
         rag.context_processer.user_query_understanding = lambda *_args: (["question"], "question", "RAG_SEARCH")
-        rag.context_processer.context_retrieval_processing = lambda *_args: "Same passage"
+        rag.context_processer.context_retrieval_processing = lambda *_args, **_kwargs: "Same passage"
         rag.context_processer.entity_extraction = lambda *_args: []
         rag.retriever = types.SimpleNamespace(
             hybrid_retrieval=lambda *_args, **_kwargs: ([first, duplicate, second], []),
@@ -403,7 +403,7 @@ class ConversationStateTests(unittest.TestCase):
             for index in range(6)
         ]
         rag.context_processer.user_query_understanding = lambda *_args: (["question"], "question", "RAG_SEARCH")
-        rag.context_processer.context_retrieval_processing = lambda *_args: "Prompt uses first five passages"
+        rag.context_processer.context_retrieval_processing = lambda *_args, **_kwargs: "Prompt uses first five passages"
         rag.context_processer.entity_extraction = lambda *_args: []
         rag.retriever = types.SimpleNamespace(
             hybrid_retrieval=lambda *_args, **_kwargs: (chunks, []),
@@ -415,13 +415,31 @@ class ConversationStateTests(unittest.TestCase):
             "Passage 0", "Passage 1", "Passage 2", "Passage 3", "Passage 4"
         ])
 
+    def test_displayed_passages_match_compressed_context(self):
+        rag = self.RAG(retriever=object())
+        chunks = [
+            types.SimpleNamespace(page_content=f"Passage {index}", metadata={"source": "SympScan"})
+            for index in range(3)
+        ]
+        rag.context_processer.user_query_understanding = lambda *_args: (["question"], "question", "RAG_SEARCH")
+        rag.context_processer.context_retrieval_processing = lambda *_args, **_kwargs: (
+            "- Passage 0.\n- Passage 2.", [chunks[0], chunks[2]]
+        )
+        rag.retriever = types.SimpleNamespace(
+            hybrid_retrieval=lambda *_args, **_kwargs: (chunks, []),
+        )
+
+        rag.Retrieval(do_graph_search=False, do_extractive_compression=True)
+        self.assertEqual([item["text"] for item in rag.retrieved_context], ["Passage 0", "Passage 2"])
+        self.assertNotIn("Passage 1", rag.hybrid_text)
+
     def test_graph_failure_uses_passages_and_records_warning(self):
         rag = self.RAG(retriever=object())
         passage = types.SimpleNamespace(
             page_content="Retrieved passage", metadata={"source": "SympScan"}
         )
         rag.context_processer.user_query_understanding = lambda *_args: (["question"], "question", "RAG_SEARCH")
-        rag.context_processer.context_retrieval_processing = lambda *_args: "Retrieved passage"
+        rag.context_processer.context_retrieval_processing = lambda *_args, **_kwargs: "Retrieved passage"
         rag.context_processer.entity_extraction = lambda *_args: []
 
         def unavailable_graph(*_args, **_kwargs):
@@ -448,7 +466,7 @@ class ConversationStateTests(unittest.TestCase):
     def test_graph_reranking_warning_is_attached_to_response(self):
         rag = self.RAG(retriever=object())
         rag.context_processer.user_query_understanding = lambda *_args: (["question"], "question", "RAG_SEARCH")
-        rag.context_processer.context_retrieval_processing = lambda *_args: ""
+        rag.context_processer.context_retrieval_processing = lambda *_args, **_kwargs: ""
         rag.context_processer.entity_extraction = lambda *_args: []
         rag.retriever = types.SimpleNamespace(
             hybrid_retrieval=lambda *_args, **_kwargs: ([], []),
@@ -468,7 +486,7 @@ class ConversationStateTests(unittest.TestCase):
     def test_graph_failure_without_passages_still_abstains(self):
         rag = self.RAG(retriever=object())
         rag.context_processer.user_query_understanding = lambda *_args: (["question"], "question", "RAG_SEARCH")
-        rag.context_processer.context_retrieval_processing = lambda *_args: ""
+        rag.context_processer.context_retrieval_processing = lambda *_args, **_kwargs: ""
         rag.context_processer.entity_extraction = lambda *_args: []
         rag.retriever = types.SimpleNamespace(
             hybrid_retrieval=lambda *_args, **_kwargs: ([], []),

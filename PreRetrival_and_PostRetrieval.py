@@ -170,10 +170,11 @@ class Context_Processer:
         hypothetical_answer_list = [response or expansion_rewrite[0], *expansion_rewrite[1:]]
         return hypothetical_answer_list[:hyde]
 
-    def extractive_compression (self, rewritten_query, chunk_content_list):
+    def extractive_compression (self, rewritten_query, chunk_content_list, return_indices = False):
 
         summaries = []
-        for chunk_content in chunk_content_list:
+        used_indices = []
+        for index, chunk_content in enumerate (chunk_content_list):
 
             prompt = f""" SYSTEM: You are a Medical Data Analyst. Your task is to summarize the provided document chunk specifically in the context of the user's search query. 
                 Extract only the clinical facts, diagnostic criteria, or treatment protocols mentioned. 
@@ -192,8 +193,10 @@ class Context_Processer:
             if not response or response.upper ().rstrip (" .") == "NOT_RELEVANT":
                 continue
             summaries.append (f"- {response}{'' if response.endswith (('.', '?', '!')) else '.'}")
+            used_indices.append (index)
 
-        return "\n".join (summaries)
+        text = "\n".join (summaries)
+        return (text, used_indices) if return_indices else text
 
     def ordering (self, chunks, do_ordering, top_k_chunk = 5):
 
@@ -219,17 +222,20 @@ class Context_Processer:
         
         return [priority_chunks, subordinate_chunks]
 
-    def context_retrieval_processing (self, chunks, rewritten_query, do_ordering, do_extractive_compression): 
+    def context_retrieval_processing (self, chunks, rewritten_query, do_ordering, do_extractive_compression, return_used_chunks = False):
 
         chunk_content_ordered = self.ordering (chunks, do_ordering)
 
         if do_extractive_compression:
-            chunk_content_summarized = self.extractive_compression (
-                rewritten_query, [chunk.page_content for chunk in chunks[:5]]
+            chunk_content_summarized, used_indices = self.extractive_compression (
+                rewritten_query, [chunk.page_content for chunk in chunks[:5]], return_indices = True
             )
+            used_chunks = [chunks[index] for index in used_indices]
         elif len (chunk_content_ordered) == 2:
             chunk_content_summarized = chunk_content_ordered[0] + chunk_content_ordered[1]
+            used_chunks = chunks
         else:
             chunk_content_summarized = chunk_content_ordered[0]
+            used_chunks = chunks[:5]
 
-        return chunk_content_summarized
+        return (chunk_content_summarized, used_chunks) if return_used_chunks else chunk_content_summarized
