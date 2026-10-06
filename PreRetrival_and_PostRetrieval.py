@@ -162,7 +162,7 @@ class Context_Processer:
 
     def extractive_compression (self, rewritten_query, chunk_content_list):
 
-        summary = ""
+        summaries = []
         for chunk_content in chunk_content_list:
 
             prompt = f""" SYSTEM: You are a Medical Data Analyst. Your task is to summarize the provided document chunk specifically in the context of the user's search query. 
@@ -176,13 +176,14 @@ class Context_Processer:
             """
             response = self.llm.invoke (prompt)
 
-            if f"SUMMARY:" in response:
-                response = response.split (f"SUMMARY:")
-                response = response[-1]
-            
-            summary += f"- {response.strip ()}.\n"
+            response = response.strip ()
+            if response.upper ().startswith ("SUMMARY:"):
+                response = response[len ("SUMMARY:"):].strip ()
+            if not response or response.upper ().rstrip (" .") == "NOT_RELEVANT":
+                continue
+            summaries.append (f"- {response}{'' if response.endswith (('.', '?', '!')) else '.'}")
 
-        return summary
+        return "\n".join (summaries)
 
     def ordering (self, chunks, do_ordering, top_k_chunk = 5):
 
@@ -213,7 +214,9 @@ class Context_Processer:
         chunk_content_ordered = self.ordering (chunks, do_ordering)
 
         if do_extractive_compression:
-            chunk_content_summarized = self.extractive_compression (rewritten_query, chunk_content_ordered)
+            chunk_content_summarized = self.extractive_compression (
+                rewritten_query, [chunk.page_content for chunk in chunks[:5]]
+            )
         elif len (chunk_content_ordered) == 2:
             chunk_content_summarized = chunk_content_ordered[0] + chunk_content_ordered[1]
         else:
