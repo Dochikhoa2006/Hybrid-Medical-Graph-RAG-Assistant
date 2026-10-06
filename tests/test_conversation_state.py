@@ -162,6 +162,11 @@ class ConversationStateTests(unittest.TestCase):
         self.assertEqual(rag.response_format_check(
             '{"chitchat": "First", "chitchat": "Second"}'
         ), "")
+        for constant in ("NaN", "Infinity", "-Infinity"):
+            with self.subTest(constant=constant):
+                self.assertEqual(rag.response_format_check(
+                    '{"chitchat": "Hello", "extra": ' + constant + '}'
+                ), "")
         rag.intent = "RAG_SEARCH"
         self.assertEqual(rag.response_format_check('{"answer": "Only one field"}'), "")
         self.assertEqual(rag.response_format_check(
@@ -191,6 +196,19 @@ class ConversationStateTests(unittest.TestCase):
         self.assertEqual(rag.llm.invoke.call_count, 2)
         self.assertIn("Hello", answer)
         self.assertIn("Do not repeat keys", rag.llm.invoke.call_args_list[1].args[0])
+
+    def test_non_json_constant_triggers_repair(self):
+        rag = self.RAG(retriever=object())
+        rag.intent = "CHITCHAT"
+        rag.llm.invoke = Mock(side_effect=[
+            '{"chitchat": "Hello", "extra": NaN}',
+            '{"chitchat": "Hello"}',
+        ])
+
+        _, answer, status = rag.Generation("BASE PROMPT", format_fail=2)
+        self.assertEqual(status, "success")
+        self.assertEqual(rag.llm.invoke.call_count, 2)
+        self.assertIn("Hello", answer)
 
     def test_schema_placeholder_echo_triggers_repair(self):
         rag = self.RAG(retriever=object())

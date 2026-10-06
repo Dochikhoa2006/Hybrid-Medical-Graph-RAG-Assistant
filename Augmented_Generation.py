@@ -286,6 +286,9 @@ class RAG:
                 result[key] = value
             return result
 
+        def reject_non_json_constant (value):
+            raise ValueError (f"Invalid JSON constant: {value}")
+
         def complete_objects (text):
             start = None
             depth = 0
@@ -313,7 +316,10 @@ class RAG:
                         yield text[start:index + 1]
                         start = None
 
-        decoder = json.JSONDecoder (object_pairs_hook = unique_object)
+        decoder = json.JSONDecoder (
+            object_pairs_hook = unique_object,
+            parse_constant = reject_non_json_constant,
+        )
         for object_text in complete_objects (response):
             try:
                 candidate = decoder.decode (object_text)
