@@ -115,6 +115,24 @@ class ContextCompressionTests(unittest.TestCase):
         self.assertEqual(display_query, "hypothetical answer")
         self.assertEqual(intent, "RAG_SEARCH")
 
+    def test_entity_extraction_ignores_echoed_prompt_example(self):
+        processor = self.ContextProcesser.__new__(self.ContextProcesser)
+        processor.llm = Mock()
+        processor.llm.invoke.side_effect = [
+            'Output: DISEASE: ["Migraine"] & MEDICATION: ["Ibuprofen"]\n'
+            'Query: "actual question"\nOutput: (YOUR RESPONSE)',
+            'Output: DISEASE: ["Migraine"] & MEDICATION: ["Ibuprofen"]\n'
+            'Query: "actual question"\nOutput: DISEASE: ["Asthma"] & MEDICATION: []',
+            'DISEASE: ["Asthma"] & MEDICATION: ["Albuterol"]',
+        ]
+
+        self.assertEqual(processor.entity_extraction(["query"], True), [[[], []]])
+        self.assertEqual(processor.entity_extraction(["query"], True), [[['asthma'], []]])
+        self.assertEqual(
+            processor.entity_extraction(["query"], True),
+            [[['asthma'], ['albuterol']]],
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

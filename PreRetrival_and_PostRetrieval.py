@@ -37,6 +37,9 @@ class Context_Processer:
             """
             
             response = self.llm.invoke (prompt)
+            output_sections = re.split (r'\bOutput\s*:', response, flags = re.IGNORECASE)
+            if len (output_sections) > 1:
+                response = output_sections[-1]
 
             sections = {"disease": [], "medication": []}
             for match in re.finditer (r'\b(DISEASE|MEDICATION)\s*:\s*\[([^\]]*)\]', response, re.IGNORECASE):

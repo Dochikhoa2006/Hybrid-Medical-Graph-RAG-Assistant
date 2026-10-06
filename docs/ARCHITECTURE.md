@@ -144,7 +144,7 @@ The tracked graph snapshot contains:
 | `treated_with` relationships | 646 |
 | `alert` relationships | 417 |
 
-Symptoms, diets, and exercises are present in chunk text, not as dedicated graph-node types. Runtime graph retrieval performs exact-name matching followed by an undirected one-hop lookup; it does not perform multi-hop graph reasoning.
+Symptoms, diets, and exercises are present in chunk text, not as dedicated graph-node types. Runtime graph retrieval performs exact-name matching followed by an undirected one-hop lookup; it does not perform multi-hop graph reasoning. Entity extraction parses the final `Output:` section when the model echoes its prompt, so example diseases and medications in the prompt are not sent to graph lookup.
 
 ## Generation and telemetry
 
