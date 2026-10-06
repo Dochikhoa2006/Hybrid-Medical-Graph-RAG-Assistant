@@ -162,6 +162,12 @@ class ConversationStateTests(unittest.TestCase):
         self.assertEqual(rag.response_format_check(
             '{"chitchat": "First", "chitchat": "Second"}'
         ), "")
+        for empty_literal in ("[]", "{}", "None", "''"):
+            with self.subTest(empty_literal=empty_literal):
+                self.assertEqual(
+                    rag.response_format_check(json.dumps({"chitchat": empty_literal})),
+                    "",
+                )
         for constant in ("NaN", "Infinity", "-Infinity"):
             with self.subTest(constant=constant):
                 self.assertEqual(rag.response_format_check(
@@ -202,6 +208,19 @@ class ConversationStateTests(unittest.TestCase):
         rag.intent = "CHITCHAT"
         rag.llm.invoke = Mock(side_effect=[
             '{"chitchat": "Hello", "extra": NaN}',
+            '{"chitchat": "Hello"}',
+        ])
+
+        _, answer, status = rag.Generation("BASE PROMPT", format_fail=2)
+        self.assertEqual(status, "success")
+        self.assertEqual(rag.llm.invoke.call_count, 2)
+        self.assertIn("Hello", answer)
+
+    def test_primary_answer_that_renders_empty_triggers_repair(self):
+        rag = self.RAG(retriever=object())
+        rag.intent = "CHITCHAT"
+        rag.llm.invoke = Mock(side_effect=[
+            '{"chitchat": "[]"}',
             '{"chitchat": "Hello"}',
         ])
 

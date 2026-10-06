@@ -327,7 +327,7 @@ class RAG:
                 continue
             if isinstance (candidate, dict) and all (
                 isinstance (candidate.get (key), str) for key in required_keys
-            ) and candidate[primary_key].strip () and all (
+            ) and self.process_valid_response (candidate[primary_key]).strip () and all (
                 candidate[key].strip ().lower ().rstrip (" .:") != SCHEMA_PLACEHOLDERS[key]
                 for key in required_keys
             ):

@@ -148,7 +148,7 @@ Symptoms, diets, and exercises are present in chunk text, not as dedicated graph
 
 ## Generation and telemetry
 
-The augmentation prompt combines reranked chunks and linearized graph relationships. Generation requests JSON-shaped output and allows at most three generation attempts total: the initial response plus up to two format-repair retries. The parser checks complete top-level JSON objects, including those surrounded by prose or code fences. It requires string fields, a nonblank primary answer, unique JSON keys, and values that do not merely repeat schema placeholders. Non-JSON constants such as `NaN` and `Infinity` are rejected. It does not provide complete JSON Schema validation; successful parsing does not establish medical correctness.
+The augmentation prompt combines reranked chunks and linearized graph relationships. Generation requests JSON-shaped output and allows at most three generation attempts total: the initial response plus up to two format-repair retries. The parser checks complete top-level JSON objects, including those surrounded by prose or code fences. It requires string fields, a primary answer that remains nonblank after rendering, unique JSON keys, and values that do not merely repeat schema placeholders. Non-JSON constants such as `NaN` and `Infinity` are rejected. It does not provide complete JSON Schema validation; successful parsing does not establish medical correctness.
 
 Each format-repair retry starts from the original augmentation prompt and adds only the latest invalid response, truncated to 1,200 characters. After the attempt limit, the UI receives a generic formatting-failure message.
 
