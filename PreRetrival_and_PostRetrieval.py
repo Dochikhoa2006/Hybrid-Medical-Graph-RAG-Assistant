@@ -56,7 +56,7 @@ class Context_Processer:
         intent = self.intent_detection (user_query, chat_history)
 
         if do_rewrite:
-            rewrite_query = self.rewrite (user_query, chat_history)
+            rewrite_query = self.rewrite (user_query, chat_history) or user_query
         else:
             rewrite_query = user_query
 
@@ -65,11 +65,19 @@ class Context_Processer:
                 expand_query = self.expansion (rewrite_query, chat_history)
             else:
                 expand_query = [rewrite_query]
+            expand_query = list (dict.fromkeys (
+                query.strip () for query in [*expand_query, rewrite_query]
+                if isinstance (query, str) and query.strip ()
+            ))
             
             if do_HyDE:
                 hypothetical_answer_list = self.HyDE (expand_query, chat_history, len (expand_query))
             else:
                 hypothetical_answer_list = expand_query
+            hypothetical_answer_list = list (dict.fromkeys (
+                query.strip () for query in [*hypothetical_answer_list, rewrite_query]
+                if isinstance (query, str) and query.strip ()
+            ))
             
             if replace_query_by_HyDE:
                 return hypothetical_answer_list, hypothetical_answer_list[0], intent
@@ -114,15 +122,14 @@ class Context_Processer:
             REWRITE: 
         """
         
-        response = self.llm.invoke (prompt)
-
-        if "REWRITE:" in response:
-            response = response.split ("REWRITE:")[-1].strip ()
-            response = re.split (r'\n', response)[0].strip ()
+        response = self.llm.invoke (prompt).strip ()
+        match = re.search (r'^[ \t]*REWRITE:[ \t]*(.*)$', response, re.IGNORECASE | re.MULTILINE)
+        if match:
+            response = match.group (1).strip ()
         else:
-            return response.strip()
+            response = response.splitlines ()[0].strip () if response else ""
 
-        return response
+        return response or user_query
 
     def expansion (self, rewritten_query, chat_history):
 
@@ -136,16 +143,15 @@ class Context_Processer:
             1. (Variation 1)
         """
         
-        response = self.llm.invoke (prompt)
-
-        if "1." in response:
-            response = response.split ("1.")
-        elif "EXPANSIONS:" in response:
-            response = response.split ("EXPANSIONS:")
+        response = self.llm.invoke (prompt).strip ()
+        match = re.search (r'^[ \t]*1\.[ \t]*(.+)$', response, re.MULTILINE)
+        if match:
+            variation = match.group (1).strip ()
         else:
-            return [response.strip (), rewritten_query]
-        
-        return [response[-1].strip (), rewritten_query]
+            response = re.sub (r'^[ \t]*EXPANSIONS:[ \t]*', '', response, count = 1, flags = re.IGNORECASE)
+            variation = response.splitlines ()[0].strip () if response else ""
+
+        return [variation, rewritten_query] if variation and variation != rewritten_query else [rewritten_query]
 
     def HyDE (self, expansion_rewrite, chat_history, hyde):
 
@@ -157,13 +163,9 @@ class Context_Processer:
             Output Format: (1-3 sentences)
         """
         
-        response = self.llm.invoke (prompt)
-        hypothetical_answer_list = [response.strip ()]
-
-        while len (hypothetical_answer_list) < hyde:
-            hypothetical_answer_list.append (expansion_rewrite[-1])
-
-        return hypothetical_answer_list[ : hyde]
+        response = self.llm.invoke (prompt).strip ()
+        hypothetical_answer_list = [response or expansion_rewrite[0], *expansion_rewrite[1:]]
+        return hypothetical_answer_list[:hyde]
 
     def extractive_compression (self, rewritten_query, chunk_content_list):
 

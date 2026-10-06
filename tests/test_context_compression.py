@@ -65,6 +65,56 @@ class ContextCompressionTests(unittest.TestCase):
                 processor.llm.invoke.return_value = response
                 self.assertEqual(processor.intent_detection("medical question", ""), expected)
 
+    def test_empty_rewrite_preserves_user_query(self):
+        processor = self.ContextProcesser.__new__(self.ContextProcesser)
+        processor.llm = Mock()
+        for response in ("", "REWRITE:", "REWRITE:   "):
+            with self.subTest(response=response):
+                processor.llm.invoke.return_value = response
+                self.assertEqual(processor.rewrite("original medical question", ""), "original medical question")
+
+    def test_expansion_keeps_original_and_ignores_blank_variation(self):
+        processor = self.ContextProcesser.__new__(self.ContextProcesser)
+        processor.llm = Mock()
+        processor.llm.invoke.return_value = "EXPANSIONS:\n1. Different wording"
+        self.assertEqual(processor.expansion("original", ""), ["Different wording", "original"])
+        processor.llm.invoke.return_value = "EXPANSIONS:\n1.   "
+        self.assertEqual(processor.expansion("original", ""), ["original"])
+        processor.llm.invoke.return_value = "EXPANSIONS:\n1. original"
+        self.assertEqual(processor.expansion("original", ""), ["original"])
+
+    def test_blank_hyde_uses_query_and_preserves_other_candidates(self):
+        processor = self.ContextProcesser.__new__(self.ContextProcesser)
+        processor.llm = Mock()
+        processor.llm.invoke.return_value = "  "
+        self.assertEqual(processor.HyDE(["variation", "original"], "", 2), ["variation", "original"])
+
+    def test_query_pipeline_never_sends_blank_candidate_to_retrieval(self):
+        processor = self.ContextProcesser.__new__(self.ContextProcesser)
+        processor.intent_detection = Mock(return_value="RAG_SEARCH")
+        processor.rewrite = Mock(return_value="")
+        processor.expansion = Mock(return_value=["", "  "])
+        processor.HyDE = Mock(return_value=[""])
+
+        candidates, display_query, intent = processor.user_query_understanding(
+            "original question", "", True, True, True, True
+        )
+        self.assertEqual((candidates, display_query, intent), (["original question"], "original question", "RAG_SEARCH"))
+
+    def test_hyde_retrieval_keeps_rewritten_query(self):
+        processor = self.ContextProcesser.__new__(self.ContextProcesser)
+        processor.intent_detection = Mock(return_value="RAG_SEARCH")
+        processor.rewrite = Mock(return_value="rewritten question")
+        processor.expansion = Mock(return_value=["alternate wording", "rewritten question"])
+        processor.HyDE = Mock(return_value=["hypothetical answer", "rewritten question"])
+
+        candidates, display_query, intent = processor.user_query_understanding(
+            "original question", "", True, True, True, True
+        )
+        self.assertEqual(candidates, ["hypothetical answer", "rewritten question"])
+        self.assertEqual(display_query, "hypothetical answer")
+        self.assertEqual(intent, "RAG_SEARCH")
+
 
 if __name__ == "__main__":
     unittest.main()
