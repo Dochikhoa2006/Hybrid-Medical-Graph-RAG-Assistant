@@ -64,6 +64,28 @@ class ContextCompressionTests(unittest.TestCase):
 
         self.assertEqual(processor.context_retrieval_processing(chunks, "query", False, True), "")
 
+    def test_empty_passages_never_become_evidence(self):
+        processor = self.ContextProcesser.__new__(self.ContextProcesser)
+        processor.llm = Mock(return_value="Kept fact")
+        empty_chunks = [types.SimpleNamespace(page_content=text) for text in ("", "  \n")]
+
+        for compress in (False, True):
+            with self.subTest(compress=compress):
+                context, used_chunks = processor.context_retrieval_processing(
+                    empty_chunks, "query", False, compress, return_used_chunks=True
+                )
+                self.assertEqual(context, "")
+                self.assertEqual(used_chunks, [])
+        processor.llm.invoke.assert_not_called()
+
+        valid = types.SimpleNamespace(page_content="Actual medical passage")
+        context, used_chunks = processor.context_retrieval_processing(
+            [empty_chunks[0], valid, empty_chunks[1]], "query", False, False,
+            return_used_chunks=True,
+        )
+        self.assertEqual(context, "- Actual medical passage.\n")
+        self.assertEqual(used_chunks, [valid])
+
     def test_intent_detection_requires_explicit_category(self):
         processor = self.ContextProcesser.__new__(self.ContextProcesser)
         processor.llm = Mock()

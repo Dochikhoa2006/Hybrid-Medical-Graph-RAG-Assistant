@@ -224,6 +224,8 @@ class Context_Processer:
 
     def context_retrieval_processing (self, chunks, rewritten_query, do_ordering, do_extractive_compression, return_used_chunks = False):
 
+        chunks = [chunk for chunk in chunks if isinstance (getattr (chunk, "page_content", None), str)
+                  and chunk.page_content.strip ()]
         chunk_content_ordered = self.ordering (chunks, do_ordering)
 
         if do_extractive_compression:

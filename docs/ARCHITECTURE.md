@@ -154,7 +154,7 @@ Each format-repair retry starts from the original augmentation prompt and adds o
 
 The Streamlit UI stores a copy of the retrieved passages and graph relationships with each assistant message and shows them in an expander. The source label comes from chunk metadata or the dataset graph snapshot. This is context transparency, not claim-level citation or verification.
 
-For medical queries, the generation step is skipped when both retrieval paths return no usable text. The application returns an abstention message instead. This is a presence check, not a relevance or clinical-safety check.
+For medical queries, empty and whitespace-only retrieved passages are removed before prompt construction. Generation is skipped when both retrieval paths return no usable text. The application returns an abstention message instead. This is a presence check, not a relevance or clinical-safety check.
 
 When optional extractive compression is enabled, each retrieved passage is summarized separately. Passages marked `NOT_RELEVANT` are omitted from both the prompt context and the UI's used-context list; if all compressed passages are omitted and no graph text remains, the request takes the abstention path.
 

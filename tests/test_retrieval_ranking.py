@@ -234,6 +234,17 @@ class RetrievalRankingTests(unittest.TestCase):
         self.assertEqual(results, expected)
         self.assertIn("Reranking was unavailable", warnings[0])
 
+    def test_empty_passages_do_not_displace_usable_results(self):
+        blank = Doc(" \n", "SympScan")
+        useful = [Doc(f"passage {index}", "SympScan") for index in range(6)]
+        self.retriever.inverted_index = types.SimpleNamespace(search=lambda *_args: [blank, *useful])
+        self.retriever.vector_database = None
+
+        results = self.retriever.hybrid_retrieval(
+            ["query"], "query", True, False, False, False
+        )
+        self.assertEqual(results, useful[:5])
+
     def test_startup_keeps_keyword_path_when_semantic_and_reranker_fail(self):
         passage = Doc("keyword passage", "SympScan")
         keyword_index = types.SimpleNamespace(search=lambda *_args: [passage])

@@ -185,7 +185,10 @@ class Retriever:
             if do_keyword_search:
                 try:
                     keyword_chunks = self.inverted_index.search (user_query_processed, top_i_keyword_search)
-                    multi_query_keyword_chunks.append (keyword_chunks)
+                    multi_query_keyword_chunks.append ([
+                        chunk for chunk in keyword_chunks
+                        if isinstance (getattr (chunk, "page_content", None), str) and chunk.page_content.strip ()
+                    ])
                 except Exception as error:
                     if "Some keyword searches failed; available results were used." not in warnings:
                         warnings.append ("Some keyword searches failed; available results were used.")
@@ -194,7 +197,10 @@ class Retriever:
             if do_semantic_search:
                 try:
                     semantic_chunks = self.vector_database.search (user_query_processed, top_j_semantic_search)
-                    multi_query_semantic_chunks.append (semantic_chunks)
+                    multi_query_semantic_chunks.append ([
+                        chunk for chunk in semantic_chunks
+                        if isinstance (getattr (chunk, "page_content", None), str) and chunk.page_content.strip ()
+                    ])
                 except Exception as error:
                     if "Some semantic searches failed; available results were used." not in warnings:
                         warnings.append ("Some semantic searches failed; available results were used.")
