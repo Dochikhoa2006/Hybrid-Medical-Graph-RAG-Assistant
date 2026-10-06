@@ -379,7 +379,7 @@ class ConversationStateTests(unittest.TestCase):
         rag.context_processer.entity_extraction = lambda *_args: []
         rag.retriever = types.SimpleNamespace(
             hybrid_retrieval=lambda *_args, **_kwargs: ([first, duplicate, second], []),
-            graph_retrieve=lambda *_args: ["Disease A treated_with X"],
+            graph_retrieve=lambda *_args, **_kwargs: ["Disease A treated_with X"],
         )
 
         rag.Retrieval()
@@ -407,7 +407,7 @@ class ConversationStateTests(unittest.TestCase):
         rag.context_processer.entity_extraction = lambda *_args: []
         rag.retriever = types.SimpleNamespace(
             hybrid_retrieval=lambda *_args, **_kwargs: (chunks, []),
-            graph_retrieve=lambda *_args: "",
+            graph_retrieve=lambda *_args, **_kwargs: "",
         )
 
         rag.Retrieval()
@@ -424,7 +424,7 @@ class ConversationStateTests(unittest.TestCase):
         rag.context_processer.context_retrieval_processing = lambda *_args: "Retrieved passage"
         rag.context_processer.entity_extraction = lambda *_args: []
 
-        def unavailable_graph(*_args):
+        def unavailable_graph(*_args, **_kwargs):
             raise ConnectionError("Neo4j unavailable")
 
         rag.retriever = types.SimpleNamespace(
@@ -444,6 +444,26 @@ class ConversationStateTests(unittest.TestCase):
         rag.reset_request_state()
         self.assertEqual(rag.graph_warning, "")
         self.assertEqual(rag.search_warnings, [])
+
+    def test_graph_reranking_warning_is_attached_to_response(self):
+        rag = self.RAG(retriever=object())
+        rag.context_processer.user_query_understanding = lambda *_args: (["question"], "question", "RAG_SEARCH")
+        rag.context_processer.context_retrieval_processing = lambda *_args: ""
+        rag.context_processer.entity_extraction = lambda *_args: []
+        rag.retriever = types.SimpleNamespace(
+            hybrid_retrieval=lambda *_args, **_kwargs: ([], []),
+            graph_retrieve=lambda *_args, **_kwargs: (
+                "Disease A treated_with Drug B.",
+                "Graph reranking was unavailable; relationships use retrieval order.",
+            ),
+        )
+        rag.Generation = Mock(return_value=("raw", "answer", "success"))
+
+        self.assertEqual(rag.RAG_Online_Phase("question"), "answer")
+        self.assertIn("Graph reranking was unavailable", rag.graph_warning)
+        self.assertEqual(rag.retrieved_context[-1]["text"], "Disease A treated_with Drug B.")
+        rag.reset_request_state()
+        self.assertEqual(rag.graph_warning, "")
 
     def test_graph_failure_without_passages_still_abstains(self):
         rag = self.RAG(retriever=object())

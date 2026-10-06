@@ -275,10 +275,13 @@ class Retriever:
         keep_top_k_chunk = min (keep_top_k_chunk, len (zip_list_sort))
         return "\n".join (pair[0] for pair in zip_list_sort[:keep_top_k_chunk])
 
-    def graph_retrieve (self, entities_list, rewritten_query, do_graph_search, do_cross_encoder):
+    def graph_retrieve (self, entities_list, rewritten_query, do_graph_search, do_cross_encoder, return_warning = False):
+
+        def result (text, warning = ""):
+            return (text, warning) if return_warning else text
 
         if not do_graph_search:
-            return ""
+            return result ("")
 
         multi_query_graph_chunks = []
         for entities in entities_list:
@@ -289,10 +292,17 @@ class Retriever:
                 multi_query_graph_chunks.extend (sub_graph_linearized_list)
         
         multi_query_graph_chunks = list (dict.fromkeys (multi_query_graph_chunks))[:10]
+        if not multi_query_graph_chunks:
+            return result ("")
+
+        warning = ""
         if do_cross_encoder and self.rerank_model is not None:
             try:
-                return self.merge_multi_subgraph_cross_encoder (multi_query_graph_chunks, rewritten_query)
+                return result (self.merge_multi_subgraph_cross_encoder (multi_query_graph_chunks, rewritten_query))
             except Exception as error:
                 logging.getLogger (__name__).warning ("Graph reranking failed: %s", type (error).__name__)
+                warning = "Graph reranking was unavailable; relationships use retrieval order."
+        elif do_cross_encoder:
+            warning = "Graph reranking was unavailable; relationships use retrieval order."
 
-        return "\n".join (multi_query_graph_chunks[:5])
+        return result ("\n".join (multi_query_graph_chunks[:5]), warning)

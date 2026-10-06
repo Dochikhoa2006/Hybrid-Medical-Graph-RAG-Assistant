@@ -294,12 +294,13 @@ class RetrievalRankingTests(unittest.TestCase):
             search=lambda _entities: [relationship]
         )
 
-        graph_text = self.retriever.graph_retrieve(
-            [(["disease a"], [])], "question", True, True
+        graph_text, warning = self.retriever.graph_retrieve(
+            [(["disease a"], [])], "question", True, True, return_warning=True
         )
         self.assertIsInstance(graph_text, str)
         self.assertIn("disease a", graph_text)
         self.assertIn("drug b", graph_text)
+        self.assertIn("Graph reranking was unavailable", warning)
 
     def test_graph_reranking_failure_preserves_unique_relationships(self):
         relationships = [
@@ -318,13 +319,15 @@ class RetrievalRankingTests(unittest.TestCase):
             predict=lambda *_args: (_ for _ in ()).throw(RuntimeError("ranker unavailable"))
         )
         with patch("logging.getLogger"):
-            graph_text = self.retriever.graph_retrieve(
-                [(["disease"], []), (["disease"], [])], "question", True, True
+            graph_text, warning = self.retriever.graph_retrieve(
+                [(["disease"], []), (["disease"], [])], "question", True, True,
+                return_warning=True,
             )
         lines = graph_text.splitlines()
         self.assertEqual(len(lines), 5)
         self.assertEqual(len(set(lines)), 5)
         self.assertIn("disease 0", lines[0])
+        self.assertIn("Graph reranking was unavailable", warning)
 
     def test_graph_ranking_separates_relationships(self):
         graph_text = self.retriever.merge_multi_subgraph_cross_encoder(

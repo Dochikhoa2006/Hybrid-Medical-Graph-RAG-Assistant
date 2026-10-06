@@ -159,7 +159,7 @@ For medical queries, the generation step is skipped when both retrieval paths re
 When optional extractive compression is enabled, each retrieved passage is summarized separately. Passages marked `NOT_RELEVANT` are omitted from the prompt context; if all compressed passages are omitted and no graph text remains, the request takes the abstention path.
 
 If graph entity extraction or Neo4j lookup fails after passage retrieval, the graph context is cleared and the UI shows a warning with that response. Generation can continue from retrieved passages. If no passage text is available, the request takes the abstention path.
-If graph reranking fails after lookup, the retriever logs the failure and uses up to five unique relationships in retrieval order. Ranked relationships are also separated by newlines in the generation context.
+If graph reranking fails after lookup or its model is unavailable, the retriever uses up to five unique relationships in retrieval order and attaches a warning to that response. Ranked relationships are also separated by newlines in the generation context.
 
 BM25 and FAISS searches fail independently. Successful results from either path can continue through ranking; if cross-encoder reranking fails, the retriever interleaves unique candidates in retrieval order. Both ranked and fallback paths return at most five passages. The UI attaches warnings to the response for failed search or ranking stages. If no usable graph or passage context remains, generation is skipped.
 

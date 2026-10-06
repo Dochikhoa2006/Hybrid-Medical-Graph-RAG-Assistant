@@ -80,7 +80,14 @@ class RAG:
                 else:
                     try:
                         entities_list = self.context_processer.entity_extraction (understand, do_graph_search)
-                        self.graph_text = self.retriever.graph_retrieve (entities_list, self.rewritten_query, do_graph_search, do_cross_encoder)
+                        graph_result = self.retriever.graph_retrieve (
+                            entities_list, self.rewritten_query, do_graph_search, do_cross_encoder,
+                            return_warning = True,
+                        )
+                        if isinstance (graph_result, tuple):
+                            self.graph_text, self.graph_warning = graph_result
+                        else:
+                            self.graph_text = graph_result
                     except Exception as error:
                         self.graph_text = ""
                         self.graph_warning = "Graph lookup was unavailable; this response uses retrieved passages only."
