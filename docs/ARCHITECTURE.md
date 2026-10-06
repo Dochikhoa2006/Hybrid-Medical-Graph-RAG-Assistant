@@ -103,7 +103,7 @@ sequenceDiagram
     RAG->>LLM: Generate heuristic scores and history summary
 ```
 
-The default request uses one rewritten query. Reciprocal-rank fusion therefore ranks and deduplicates candidates inside each retrieval path; it is not combining a large set of active query expansions under the default settings.
+The default request uses one rewritten query. Reciprocal-rank fusion therefore ranks and deduplicates candidates inside each retrieval path; it is not combining a large set of active query expansions under the default settings. Repeated copies of a document within one query result contribute only one rank score, while appearances across distinct queries still accumulate.
 Intent detection accepts an explicit `RAG_SEARCH` or `CHITCHAT` category. Ambiguous output defaults to medical search so incidental category words in a model explanation do not route a query to chitchat.
 If query rewriting, expansion, or optional HyDE returns blank text, query processing keeps the original or rewritten user query as a retrieval candidate. Duplicate candidates are removed before search.
 

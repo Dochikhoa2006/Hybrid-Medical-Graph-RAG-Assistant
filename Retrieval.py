@@ -103,11 +103,15 @@ class Retriever:
         raw_docs_mapping = {}
 
         for each_query_retrieval in multi_query_retrieval:
+            seen_in_query = set ()
             for rank, doc in enumerate (each_query_retrieval):
 
-                doc_rank = 1 / (decay_rank + rank)
                 doc_key = self.document_key (doc)
-                raw_docs_mapping[doc_key] = doc
+                if doc_key in seen_in_query:
+                    continue
+                seen_in_query.add (doc_key)
+                doc_rank = 1 / (decay_rank + rank)
+                raw_docs_mapping.setdefault (doc_key, doc)
 
                 if doc_key in rank_docs:
                     rank_docs[doc_key] += doc_rank

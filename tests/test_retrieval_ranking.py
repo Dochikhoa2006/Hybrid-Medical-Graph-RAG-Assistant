@@ -60,6 +60,19 @@ class RetrievalRankingTests(unittest.TestCase):
         )
         self.assertEqual(results, [source_a, source_b])
 
+    def test_rank_fusion_counts_each_document_once_per_query(self):
+        first = Doc("first result", "SympScan")
+        repeated = Doc("repeated result", "SympScan")
+        result = self.retriever.merge_multi_query_retrieval(
+            [[first, repeated, repeated, repeated]]
+        )
+        self.assertEqual(result, [first, repeated])
+
+        across_queries = self.retriever.merge_multi_query_retrieval(
+            [[first, repeated, repeated], [repeated]]
+        )
+        self.assertEqual(across_queries, [repeated, first])
+
     def test_hybrid_reranking_removes_duplicate_candidates(self):
         source_a = Doc("same text", "source-a")
         source_b = Doc("same text", "source-b")
