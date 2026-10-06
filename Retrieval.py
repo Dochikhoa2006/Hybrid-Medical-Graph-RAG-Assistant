@@ -7,10 +7,21 @@ import joblib
 import json
 import os
 import logging
+import math
 from itertools import zip_longest
 
 
 class Retriever:
+
+    @staticmethod
+    def validated_rerank_scores (scores, candidate_count):
+        scores = list (scores)
+        if len (scores) != candidate_count:
+            raise ValueError ("Reranker returned a different number of scores than candidates")
+        numeric_scores = [float (score) for score in scores]
+        if not all (math.isfinite (score) for score in numeric_scores):
+            raise ValueError ("Reranker returned a non-finite score")
+        return numeric_scores
 
     @staticmethod
     def document_key (doc):
@@ -134,7 +145,7 @@ class Retriever:
         if not pairs:
             return []
 
-        cls_scores = self.rerank_model.predict (pairs)
+        cls_scores = self.validated_rerank_scores (self.rerank_model.predict (pairs), len (merge_docs))
         document_combine_with_cls_score = zip (merge_docs, cls_scores)
 
         key = lambda pair: pair[1]
@@ -272,7 +283,7 @@ class Retriever:
         for chunk in multi_query_graph_chunks:
             pairs.append ([rewritten_query, chunk])
 
-        cls_scores = self.rerank_model.predict (pairs)
+        cls_scores = self.validated_rerank_scores (self.rerank_model.predict (pairs), len (multi_query_graph_chunks))
         pairs = zip (multi_query_graph_chunks, cls_scores)
 
         key = lambda pair: pair[1]
