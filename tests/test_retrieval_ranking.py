@@ -301,6 +301,37 @@ class RetrievalRankingTests(unittest.TestCase):
         self.assertIn("disease a", graph_text)
         self.assertIn("drug b", graph_text)
 
+    def test_graph_reranking_failure_preserves_unique_relationships(self):
+        relationships = [
+            {
+                "entity1": f"disease {index}", "entity1_type": "Disease",
+                "connection": ("alert", "treated_with", "has_context_of")[index % 3],
+                "entity2": f"related {index}",
+                "entity2_type": "Medication",
+            }
+            for index in range(7)
+        ]
+        self.retriever.knowledge_database = types.SimpleNamespace(
+            search=lambda _entities: relationships
+        )
+        self.retriever.rerank_model = types.SimpleNamespace(
+            predict=lambda *_args: (_ for _ in ()).throw(RuntimeError("ranker unavailable"))
+        )
+        with patch("logging.getLogger"):
+            graph_text = self.retriever.graph_retrieve(
+                [(["disease"], []), (["disease"], [])], "question", True, True
+            )
+        lines = graph_text.splitlines()
+        self.assertEqual(len(lines), 5)
+        self.assertEqual(len(set(lines)), 5)
+        self.assertIn("disease 0", lines[0])
+
+    def test_graph_ranking_separates_relationships(self):
+        graph_text = self.retriever.merge_multi_subgraph_cross_encoder(
+            ["first relationship.", "second relationship."], "question"
+        )
+        self.assertEqual(graph_text, "first relationship.\nsecond relationship.")
+
 
 if __name__ == "__main__":
     unittest.main()
