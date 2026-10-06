@@ -90,11 +90,16 @@ class Context_Processer:
             CATEGORY: (TYPE)
         """
 
-        response = self.llm.invoke (prompt)
-        response = response.strip ().upper ()
+        response = self.llm.invoke (prompt).strip ().upper ()
+        if response in ("RAG_SEARCH", "CHITCHAT"):
+            return response
 
-        if "CHITCHAT" in response:
-            return "CHITCHAT"
+        categories = re.findall (
+            r'^\s*CATEGORY:\s*\(?\s*(RAG_SEARCH|CHITCHAT)\s*\)?\s*$',
+            response, re.MULTILINE,
+        )
+        if categories:
+            return categories[-1]
         
         return "RAG_SEARCH"
 

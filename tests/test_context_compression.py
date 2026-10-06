@@ -51,6 +51,20 @@ class ContextCompressionTests(unittest.TestCase):
 
         self.assertEqual(processor.context_retrieval_processing(chunks, "query", False, True), "")
 
+    def test_intent_detection_requires_explicit_category(self):
+        processor = self.ContextProcesser.__new__(self.ContextProcesser)
+        processor.llm = Mock()
+        for response, expected in (
+            ("CHITCHAT", "CHITCHAT"),
+            ("CATEGORY: CHITCHAT", "CHITCHAT"),
+            ("CATEGORY: RAG_SEARCH", "RAG_SEARCH"),
+            ("Medical query; the prompt also mentions CHITCHAT", "RAG_SEARCH"),
+            ("CATEGORY: (TYPE)\nRAG_SEARCH", "RAG_SEARCH"),
+        ):
+            with self.subTest(response=response):
+                processor.llm.invoke.return_value = response
+                self.assertEqual(processor.intent_detection("medical question", ""), expected)
+
 
 if __name__ == "__main__":
     unittest.main()

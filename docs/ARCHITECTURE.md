@@ -104,6 +104,7 @@ sequenceDiagram
 ```
 
 The default request uses one rewritten query. Reciprocal-rank fusion therefore ranks and deduplicates candidates inside each retrieval path; it is not combining a large set of active query expansions under the default settings.
+Intent detection accepts an explicit `RAG_SEARCH` or `CHITCHAT` category. Ambiguous output defaults to medical search so incidental category words in a model explanation do not route a query to chitchat.
 
 ## Default and experimental features
 
